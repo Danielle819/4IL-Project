@@ -7,7 +7,12 @@ IP = '127.0.0.1'
 PORT = 1984
 server_socket = socket.socket()
 server_socket.bind((IP, PORT))
-server_socket.listen(1)
+server_socket.listen(2)
+
+
+def send_to_players(players, message):
+    players[0].send(message.encode())
+    players[1].send(message.encode())
 
 
 def play():
@@ -28,9 +33,7 @@ def play():
     turn = 0
 
     str_board = commprot.board_to_string(board.board)
-    players[0].send(str_board.encode())
-    players[1].send(str_board.encode())
-    # time.sleep(5)
+    send_to_players(players, str_board)
 
     while turn < 42 and not game.check_board(board):
         if turn1:
@@ -45,15 +48,13 @@ def play():
             board.choose_cell(2, place)
 
         str_board = commprot.board_to_string(board.board)
-        players[0].send(str_board.encode())
-        players[1].send(str_board.encode())
+        send_to_players(players, str_board)
 
         turn1 = not turn1
         turn2 = not turn2
         turn += 1
 
-    players[0].send("-----end-----".encode())
-    players[1].send("-----end-----".encode())
+    send_to_players(players, "-----end-----")
 
     winner = board.winner
     if winner == 1:
@@ -66,17 +67,8 @@ def play():
         players[0].send("-you lost".encode())
     elif winner == 0:
         print("game over")
-        players[0].send("game over".encode())
-        players[1].send("game over".encode())
-
-
-
-
+        send_to_players(players, "game over")
 
 
 play()
-
-
-
-
 

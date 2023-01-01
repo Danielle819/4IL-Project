@@ -1,5 +1,4 @@
 import numpy as np
-import socket
 
 
 class Board:
@@ -17,54 +16,46 @@ class Board:
         self.winner = player
 
 
-def start_game():
-    board = np.zeros((6,7), dtype=int)
-    print(board)
-
-    turn1 = True
-    turn2 = False
-    turn = 0
-    while turn < 42 and not check_board(board):
-        if turn1:
-            print("turn:", 1)
-            turn = 1
-        elif turn2:
-            print("turn:", 2)
-            turn = 2
-        place = get_place(board)
-        board[place] = turn
-        print(board)
-        turn1 = not turn1
-        turn2 = not turn2
-
-        turn += 1
-
-    if turn1:
-        print("winner:", 2)
-    else:
-        print("winner:", 1)
+# def start_game():
+#     board = np.zeros((6,7), dtype=int)
+#     print(board)
+#
+#     turn1 = True
+#     turn2 = False
+#     turn = 0
+#     while turn < 42 and not check_board(board):
+#         if turn1:
+#             print("turn:", 1)
+#             turn = 1
+#         elif turn2:
+#             print("turn:", 2)
+#             turn = 2
+#         place = get_place(board)
+#         board[place] = turn
+#         print(board)
+#         turn1 = not turn1
+#         turn2 = not turn2
+#
+#         turn += 1
+#
+#     if turn1:
+#         print("winner:", 2)
+#     else:
+#         print("winner:", 1)
 
 
 def get_place(board):
-    row = get_row()
     col = get_col()
 
-    while not check_place(board, (row, col)):
+    while not check_col(board, col):
         print("inaccessible place, try again.")
-        row = get_row()
         col = get_col()
 
+    row = board.shape[0] - 1
+    while board[row, col] != 0:
+        row -= 1
+
     return row, col
-
-
-def get_row():
-    row = None
-    while row is None:
-        try:
-            row = int(input("\nchoose row: "))
-        except ValueError:
-            print("invalid input. try again")
-    return row
 
 
 def get_col():
@@ -77,16 +68,28 @@ def get_col():
     return col
 
 
+def check_col(board, col):
+    if col >= board.shape[1] or col < 0:
+        return False
+
+    return board[0, col] == 0
+
+
 def check_board(BOARD):
     # check rows
+    counter = 1
+    turn = 0
     for row in range(BOARD.board.shape[0])[::-1]:
+        if counter == 4:
+            BOARD.set_winner(turn)
+            return True
         counter = 1
         turn = 0
-        for col in range(1, BOARD.board.shape[1]):
+        for col in range(BOARD.board.shape[1] - 1):
             if counter == 4:
                 BOARD.set_winner(turn)
                 return True
-            if BOARD.board[row, col - 1] == BOARD.board[row, col] != 0:
+            if BOARD.board[row, col] == BOARD.board[row, col + 1] != 0:
                 counter += 1
                 turn = BOARD.board[row, col]
             else:
@@ -95,6 +98,7 @@ def check_board(BOARD):
 
     # check columns
     counter = 1
+    turn = 0
     for col in range(BOARD.board.shape[1]):
         if counter == 4:
             BOARD.set_winner(turn)
@@ -199,23 +203,3 @@ def check_board(BOARD):
                 pass
 
     return False
-
-
-def check_place(BOARD, place):
-    if place[0] >= BOARD.shape[0] or place[1] >= BOARD.shape[1]:
-        return False
-
-    if place[0] == BOARD.shape[0] - 1:
-        return BOARD[place] == 0
-
-    if BOARD[place[0] + 1, place[1]] == 0:
-        return False
-
-    return BOARD[place] == 0
-
-
-
-
-
-
-

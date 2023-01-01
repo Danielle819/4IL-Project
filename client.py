@@ -11,14 +11,15 @@ client_socket.connect((IP, PORT))
 def print_board():
     board = client_socket.recv(83).decode()
     board = commprot.string_to_board(board)
-    print(board)
+    print("\n")
+    print(board, "\n")
     return board
 
 
 def play():
     print("waiting for another player to join...")
     status = client_socket.recv(26).decode()
-    print(status, "\n")
+    print(status)
 
     board = print_board()
     status = client_socket.recv(13).decode()
@@ -28,14 +29,11 @@ def play():
             client_socket.send(str(place).encode())
             board = print_board()
         elif status == "not your turn":
-            print("\nwaiting for other player to play...")
+            print("waiting for other player to play...")
             board = print_board()
-
         status = client_socket.recv(13).decode()
-        # print(status)
 
-    # print("game ended")
-    status = client_socket.recv(1024).decode()
+    status = client_socket.recv(9).decode()
     print(status)
 
 

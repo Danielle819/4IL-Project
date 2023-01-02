@@ -5,16 +5,18 @@ CMD_FIELD_LENGTH = 20  # Exact length of cmd field (in bytes)
 LENGTH_FIELD_LENGTH = 4  # Exact length of length field (in bytes)
 # MAX_DATA_LENGTH = 10 ** LENGTH_FIELD_LENGTH - 1  # Max size of data field according to protocol
 BUFFER = "|"  # Delimiter character in protocol
+CMD_FIELD = CMD_FIELD_LENGTH * ' '
+LENGTH_FIELD = LENGTH_FIELD_LENGTH * ' '
 
 # Protocol Messages 
 # In this dictionary we will have all the client and server command names
-PROTOCOL_CLIENT = {
+CLIENT_CMD = {
     "signup_msg": "SIGNUP",  # username#password
     "login_msg": "LOGIN",  # username#password
     "logout_msg": "LOGOUT",  # ''
-    "create_id_room_msg": "CREATE_ID_ROOM",  # username
-    "create_open_room_msg": "CREATE_OPEN_ROOM",  # username
-    "join_id_room_msg": "JOIN_ID_ROOM",  # username#ID
+    "create_id_room_msg": "CREATE_ID_ROOM",  # ''
+    "create_open_room_msg": "CREATE_OPEN_ROOM",  # ''
+    "join_id_room_msg": "JOIN_ID_ROOM",  # ID
     "join_open_room_msg": "JOIN_OPEN_ROOM",  # username
     "exit_room_msg": "EXIT_ROOM",  # username#ID
     "choose_cell_msg": "CHOOSE_CELL",  # username#ID#row#column
@@ -22,7 +24,7 @@ PROTOCOL_CLIENT = {
     "topten_msg": "TOPTEN"  # ''
 }
 
-PROTOCOL_SERVER = {
+SERVER_CMD = {
     "signup_ok_msg": "SIGNUP_OK",  # ''
     "signup_error_msg": "SIGNUP_ERROR",  # 'username should be 6-20 characters, letters and digits only' or
                                          # 'password should be 8-20 characters, letters and digits only'
@@ -30,6 +32,7 @@ PROTOCOL_SERVER = {
     "login_error_msg": "LOGIN_ERROR",  # 'username is not registered' or 'incorrect password'
     "create_id_room_ok_msg": "CREATE_ID_ROOM_OK",  # ID
     "create_open_room_ok_msg": "CREATE_OPEN_ROOM_OK",  # ''
+    # "in_waiting_msg": "IN_WAITING",  # ''
     "join_id_room_ok_msg": "JOIN_ID_ROOM_OK",  # ''
     "join_open_room_ok_msg": "JOIN_OPEN_ROOM_OK",  # ''
     "exit_room_ok_msg": "EXIT_ROOM_OK",  # ''
@@ -39,12 +42,8 @@ PROTOCOL_SERVER = {
     "game_result_msg": "GAME_RESULT",  # 'winner is (username) + well done!/good luck next time!' or 'game over'
     "your_score_msg": "YOUR_SCORE",  # score
     "topten_ans_msg": "TOPTEN_ANS",  # user1: score1\nuser2: score2\n...
+    "error_msg": "ERROR"  # the error
 }
-
-# Other constants
-
-CMD_FIELD = CMD_FIELD_LENGTH * ' '
-LENGTH_FIELD = LENGTH_FIELD_LENGTH * ' '
 
 
 def build_message(cmd, data):
@@ -111,7 +110,7 @@ def split_msg(msg, expected_fields):
     """
     Helper method. gets a string and number of expected fields in it. Splits the string
     using protocol's delimiter (|) and validates that there are correct number of fields.
-    Returns: list of fields if all ok. If some error occurred, returns None
+    Returns: list of fields if all ok. If some error occurred, returns list of None
     """
 
     splitted_msg = msg.split('|')

@@ -1,5 +1,7 @@
 import numpy as np
 
+import server
+
 
 def print_hi():
     BOARD = np.zeros((6, 7), dtype=int)
@@ -13,34 +15,8 @@ def print_hi():
     string = board_to_string(BOARD)
     string_to_board(string)
 
-    print(len(string))
-    #
-    # counter1 = 1
-    # counter2 = 1
-    # for start in range(3)[::-1]:
-    #     if counter1 == 4 or counter2 == 4:
-    #         return True
-    #     counter1 = 1
-    #     counter2 = 1
-    #     for row, col in zip(range(start, 6), range(1, 7)[::-1]):
-    #         if counter1 == 4 or counter2 == 4:
-    #             return True
-    #         try:
-    #             if BOARD[row, col] == BOARD[row + 1, col - 1] != 0:
-    #                 counter1 += 1
-    #             else:
-    #                 counter1 = 1
-    #         except IndexError:
-    #             pass
-    #         try:
-    #             if BOARD[6 - col, 5 - row] == BOARD[6 - col + 1, 5 - row - 1] != 0:
-    #                 counter2 += 1
-    #             else:
-    #                 counter2 = 1
-    #         except IndexError:
-    #             pass
-    #
-    # return False
+    print(int("    1"))
+
 
 
 def board_to_string(board):
@@ -67,4 +43,4 @@ def string_to_board(string):
 
 
 if __name__ == '__main__':
-    print(print_hi())
+    print(server.create_id())

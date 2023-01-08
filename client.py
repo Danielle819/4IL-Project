@@ -3,9 +3,8 @@ import socket
 import game
 
 # CONSTANTS
-IP = '192.168.11.157'
+IP = '127.0.0.1'
 PORT = 1984
-
 
 
 # HELPER SOCKET METHODS
@@ -17,8 +16,8 @@ def build_and_send_message(conn, code, msg):
     Parameters: conn (socket object), code (str), msg (str)
     Returns: Nothing
     """
-
     message = commprot.build_message(code, msg)
+    print("build and send message mtd - sent:", message)
     conn.send(message.encode())
 
 
@@ -36,6 +35,7 @@ def recv_message_and_parse(conn):
     except ConnectionResetError:
         return None, None
     cmd, msg = commprot.parse_message(data)
+    print("recv message and parse mtd - got:", cmd, "|", msg)
     return cmd, msg
 
 
@@ -57,11 +57,35 @@ def print_board(client_socket):
 # COMMAND HANDLING METHODS
 
 def create_id_room(client_socket):
-    response = build_send_recv_parse(client_socket, commprot.CLIENT_CMD["create_id_room_msg"], "")
+    """
+    sends the server a message that client wants to create an id room,
+    gets a response (was the room created) and the id (if it was) and starts the game
+    Parameters: client_socket (socket)
+    Return: None if the room was not created
+    """
+    response, ID = build_send_recv_parse(client_socket, commprot.CLIENT_CMD["create_id_room_msg"], "")
+    print(response)
     if response == commprot.SERVER_CMD["create_id_room_ok_msg"]:
+        print(ID)
         play(client_socket)
     else:
         print("something went wrong")
+        return
+
+
+def join_id_room(client_socket):
+    """
+    sends the server a message that the client wants to join an id room
+    and the room's id, and starts the game if response was ok. if not, prints error
+    Parameters: client_socket (socket)
+    Return: None if the room was not created
+    """
+    ID = input("enter room ID: ")
+    response, _ = build_send_recv_parse(client_socket, commprot.CLIENT_CMD["join_id_room_msg"], ID)
+    if response == commprot.SERVER_CMD["join_id_room_ok_msg"]:
+        play(client_socket, False)
+    else:
+        print(_)
         return
 
 
@@ -87,8 +111,6 @@ def play(client_socket, creator=True):
     print(status)
 
 
-
-
 def main():
     client_socket = socket.socket()
     client_socket.connect((IP, PORT))
@@ -98,7 +120,9 @@ def main():
     # first - login or signup
 
     print("\nWHAT DO YOU WANT TO DO?")
-    print("commands: CID - create room with")
+    print("commands: CID - create room with ID")
+    print("          JID - join room with ID")
+    print("          Q - quit")
     # print("          S - get your score")
     # print("          H - get the scores table")
     # print("          U - get all the logged users")
@@ -106,8 +130,10 @@ def main():
     cmd = input("your command: ")
 
     while cmd != 'L' and cmd != "l":
-        if cmd == "CID" or cmd == "cid":
+        if cmd == "CID" or "cid":
             create_id_room(client_socket)
+        elif cmd == "JID" or "jid":
+            join_id_room(client_socket)
         # elif cmd == "Q" or cmd == "q":
         #     play_question(client_socket)
         # elif cmd == "H" or cmd == "h":
@@ -116,13 +142,18 @@ def main():
         #     get_logged_users(client_socket)
         # else:
         #     print("invalid answer. try again.")
+        elif cmd == "Q" or "q":
+            break
 
-        print("\ncommands: Q - get a question")
-        print("          S - get your score")
-        print("          H - get the scores table")
-        print("          U - get all the logged users")
-        print("          L - logout")
+        print("commands: CID - create room with ID")
+        print("          JID - join room with ID")
+        print("          Q - quit")
+        # print("          S - get your score")
+        # print("          H - get the scores table")
+        # print("          U - get all the logged users")
+        # print("          L - logout")
         cmd = input("WHAT DO YOU WANT TO DO? ")
+
     # logout(client_socket)
     client_socket.close()
 

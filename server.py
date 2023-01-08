@@ -39,7 +39,7 @@ def send_waiting_messages(messages, wlist):
     for message in messages:
         current_socket, data = message
         if current_socket in wlist:
-            current_socket.send(data)
+            current_socket.send(data.encode())
             messages.remove(message)
 
 
@@ -104,9 +104,9 @@ def handle_create_id_room(conn):
     ID = create_id()
     while ID in waiting_id_rooms:
         ID = create_id()
-
+    print(ID)
     waiting_id_rooms[ID] = conn
-    build_and_send_message(conn, commprot.SERVER_CMD["create_open_room_ok_msg"], ID)
+    build_and_send_message(conn, commprot.SERVER_CMD["create_id_room_ok_msg"], ID)
 
 
 def handle_join_id_room(conn, ID):
@@ -116,7 +116,7 @@ def handle_join_id_room(conn, ID):
     parameters: conn (client socket), ID (string)
     """
     if ID not in waiting_id_rooms:
-        build_and_send_message(conn, commprot.SERVER_CMD, "ID not found")
+        build_and_send_message(conn, commprot.SERVER_CMD["error_msg"], "ID not found")
         return
 
     playing_client_sockets.append(conn)
@@ -134,7 +134,6 @@ def handle_join_id_room(conn, ID):
     not_playing_client_sockets.append(waiting_id_rooms[ID])
 
 
-
 def handle_client_message(conn, cmd, data):
     """
     Gets message code and data and calls the right function to handle command
@@ -142,22 +141,22 @@ def handle_client_message(conn, cmd, data):
     """
     global logged_users
 
-    if conn.getpeername() not in logged_users:
-        if cmd == "LOGIN":
-            pass
-            # username = data.split("#")[0]
-            # if username not in logged_users.values():
-            #     handle_login_message(conn, data)
-            # else:
-            #     send_error(conn, "User is already logged in")
-            # return
-        elif cmd == "SIGNUP":
-            pass
-        else:
-            send_error(conn, "User was not connected")
-            return
+    # if conn.getpeername() not in logged_users:
+    #     if cmd == "LOGIN":
+    #         pass
+    #         # username = data.split("#")[0]
+    #         # if username not in logged_users.values():
+    #         #     handle_login_message(conn, data)
+    #         # else:
+    #         #     send_error(conn, "User is already logged in")
+    #         # return
+    #     elif cmd == "SIGNUP":
+    #         pass
+    #     else:
+    #         send_error(conn, "User was not connected")
+    #         return
 
-    username = logged_users[conn.getpeername()]
+    # username = logged_users[conn.getpeername()]
 
     if cmd == "LOGOUT":
         pass
@@ -236,7 +235,7 @@ def play(players):
         send_to_players(players, "game over")
 
 
-IP = '192.168.11.157'
+IP = '127.0.0.1'
 PORT = 1984
 server_socket = socket.socket()
 server_socket.bind((IP, PORT))
@@ -256,8 +255,7 @@ def main():
     # server_socket = setup_socket()
 
     while True:
-        rlist, wlist, xlist = select.select([server_socket] + not_playing_client_sockets, [not_playing_client_sockets]
-                                            + [playing_client_sockets], [])
+        rlist, wlist, xlist = select.select([server_socket] + not_playing_client_sockets, not_playing_client_sockets + playing_client_sockets, [])
         for current_socket in rlist:
             if current_socket is server_socket:
                 (new_socket, address) = server_socket.accept()

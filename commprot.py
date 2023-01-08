@@ -90,7 +90,7 @@ def parse_message(data):
         if char.isalpha() or char == '_':
             cmd += char
 
-    if cmd not in PROTOCOL_CLIENT.values() and cmd not in PROTOCOL_SERVER.values():
+    if cmd not in CLIENT_CMD.values() and cmd not in SERVER_CMD.values():
         return None, None
 
     length = splt_msg[1]

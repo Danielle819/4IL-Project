@@ -1,3 +1,4 @@
+import time
 import commprot
 import socket
 import select
@@ -5,6 +6,7 @@ import game
 import string
 import random
 import threading
+from colorama import Fore, Style
 
 # GLOBALS
 users = {}  # username: {password: _, score: _, playing: _}
@@ -30,17 +32,13 @@ that will run the game (and send both sockets to it)
 waiting_open_rooms = []  # (waiting) client_socket
 
 
-def send_to_players(players, message):
-    players[0].send(message.encode())
-    players[1].send(message.encode())
-
-
-def send_waiting_messages(messages, wlist):
-    for message in messages:
-        current_socket, data = message
-        if current_socket in wlist:
-            current_socket.send(data.encode())
-            messages.remove(message)
+# def send_players_messages(messages):
+#     global playing_client_sockets
+#     for message in messages:
+#         current_socket, data = message
+#         if current_socket in playing_client_sockets:
+#             current_socket.send(data.encode())
+#             messages.remove(message)
 
 
 def send_error(conn, error_msg):
@@ -49,22 +47,24 @@ def send_error(conn, error_msg):
     Receives: socket, message error string from called function
     Returns: None
     """
-
     build_and_send_message(conn, "ERROR", error_msg)
 
 
 # HELPER SOCKET METHODS
 
-def build_and_send_message(conn, cmd, msg):
+def build_and_send_message(conn, cmd, msg, player=False):
     """
     Builds a new message using commprot, wanted code and message.
     Prints debug info, then sends it to the given socket.
     Parameters: conn (socket object), cmd (str), msg (str)
     Returns: Nothing
     """
-
     message = commprot.build_message(cmd, str(msg))
-    messages_to_send.append((conn, message))
+    # print(Fore.GREEN + "build_and_send_message - sent:", message + Style.RESET_ALL)
+    if not player:
+        messages_to_send.append((conn, message))
+    if player:
+        conn.send(message.encode())
 
 
 def recv_message_and_parse(conn):
@@ -75,64 +75,39 @@ def recv_message_and_parse(conn):
     Returns: cmd (str) and data (str) of the received message.
     If error occurred, will return None, None
     """
-
     try:
         message = conn.recv(10019).decode()
     except ConnectionResetError:
         return "", ""
     if message == "":
         return "", ""
+    # print(Fore.GREEN + "recv_message_and_parse - got:", message + Style.RESET_ALL)
     cmd, msg = commprot.parse_message(message)
     return cmd, msg
 
 
 # OTHER HELPER METHODS
 
+def send_waiting_messages(messages, wlist):
+    for message in messages:
+        current_socket, data = message
+        if current_socket in wlist:
+            current_socket.send(data.encode())
+            messages.remove(message)
+
+
 def create_id():
     chars = string.ascii_uppercase
     return ''.join(random.choice(chars) for _ in range(6))
 
 
+def send_players_board(players, board):
+    str_board = commprot.board_to_string(board.board)
+    build_and_send_message(players[0], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
+    build_and_send_message(players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
+
+
 # COMMANDS HANDLING METHODS
-
-def handle_create_id_room(conn):
-    """
-    gets a client who wants to start a game, sends them an ID
-    and puts them in the waiting list
-    parameters: conn (client socket)
-    """
-    ID = create_id()
-    while ID in waiting_id_rooms:
-        ID = create_id()
-    print(ID)
-    waiting_id_rooms[ID] = conn
-    build_and_send_message(conn, commprot.SERVER_CMD["create_id_room_ok_msg"], ID)
-
-
-def handle_join_id_room(conn, ID):
-    """
-    gets a client who wants to join a room by an ID. if ID exists,
-    moves both clients to the playing list and starts a thread that runs the game
-    parameters: conn (client socket), ID (string)
-    """
-    if ID not in waiting_id_rooms:
-        build_and_send_message(conn, commprot.SERVER_CMD["error_msg"], "ID not found")
-        return
-
-    playing_client_sockets.append(conn)
-    playing_client_sockets.append(waiting_id_rooms[ID])
-    not_playing_client_sockets.remove(conn)
-    not_playing_client_sockets.remove(waiting_id_rooms[ID])
-
-    game_thread = threading.Thread(target=play, args=[waiting_id_rooms[ID], conn])
-    game_thread.start()
-    game_thread.join()
-
-    playing_client_sockets.remove(conn)
-    playing_client_sockets.remove(waiting_id_rooms[ID])
-    not_playing_client_sockets.append(conn)
-    not_playing_client_sockets.append(waiting_id_rooms[ID])
-
 
 def handle_client_message(conn, cmd, data):
     """
@@ -163,11 +138,11 @@ def handle_client_message(conn, cmd, data):
     elif cmd == "CREATE_ID_ROOM":
         handle_create_id_room(conn)
     elif cmd == "CREATE_OPEN_ROOM":
-        pass
+        handle_create_open_room(conn)
     elif cmd == "JOIN_ID_ROOM":
         handle_join_id_room(conn, data)  # data=ID
     elif cmd == "JOIN_OPEN_ROOM":
-        pass
+        handle_join_open_room(conn)
     elif cmd == "EXIT_ROOM":
         pass
     elif cmd == "MY_SCORE":
@@ -178,61 +153,137 @@ def handle_client_message(conn, cmd, data):
         send_error(conn, "Unrecognised command")
 
 
-def play(players):
-    # print("waiting for first player...")
-    # client_socket1, client_address1 = server_socket.accept()
-    # print("the first player has joined!")
-    # print("waiting for second player...")
-    # client_socket2, client_address2 = server_socket.accept()
-    # print("the second player has joined!")
-    # players = [client_socket1, client_socket2]
-    # print(client_socket1.getpeername())
-    #
-    # # to allow the game to begin
-    # client_socket1.send("another player has joined!".encode())
-    # client_socket2.send("another player has joined!".encode())
+def handle_create_id_room(conn):
+    """
+    gets a client who wants to start a game, sends them an ID
+    and puts them in the waiting list
+    parameters: conn (client socket)
+    """
+    ID = create_id()
+    while ID in waiting_id_rooms:
+        ID = create_id()
+    waiting_id_rooms[ID] = conn
+    build_and_send_message(conn, commprot.SERVER_CMD["create_id_room_ok_msg"], ID)
 
+
+def handle_join_id_room(conn, ID):
+    """
+    gets a client who wants to join a room by an ID. if ID exists,
+    moves both clients to the playing list and starts a thread that runs the game
+    parameters: conn (client socket), ID (string)
+    """
+    if ID not in waiting_id_rooms:
+        build_and_send_message(conn, commprot.SERVER_CMD["error_msg"], "ID not found")
+        return
+
+    build_and_send_message(conn, commprot.SERVER_CMD["join_id_room_ok_msg"], "", player=True)
+
+    playing_client_sockets.append(conn)
+    playing_client_sockets.append(waiting_id_rooms[ID])
+    not_playing_client_sockets.remove(conn)
+    not_playing_client_sockets.remove(waiting_id_rooms[ID])
+
+    players = [waiting_id_rooms[ID], conn]
+    game_thread = threading.Thread(target=play, args=[players])
+    game_thread.start()
+    game_thread.join()
+
+    playing_client_sockets.remove(conn)
+    playing_client_sockets.remove(waiting_id_rooms[ID])
+    not_playing_client_sockets.append(conn)
+    not_playing_client_sockets.append(waiting_id_rooms[ID])
+
+
+def handle_create_open_room(conn):
+    """
+    gets a client who wants to start a game and puts them in the waiting list
+    parameters: conn (client socket)
+    """
+    global waiting_open_rooms
+    waiting_open_rooms.append(conn)
+    build_and_send_message(conn, commprot.SERVER_CMD["create_open_room_ok_msg"], "")
+
+
+def handle_join_open_room(conn):
+    """
+    gets a client who wants to join an open room. if there are open rooms,
+    moves both clients to the playing list and starts a thread that runs the game.
+    if there aren't, sends back the message
+    parameters: conn (client socket)
+    """
+    global waiting_open_rooms
+    if len(waiting_open_rooms) == 0:
+        build_and_send_message(conn, commprot.SERVER_CMD["no_open_rooms_msg"], "")
+        return
+
+    build_and_send_message(conn, commprot.SERVER_CMD["join_open_room_ok_msg"], "", player=True)
+    other_player = waiting_open_rooms[0]
+    waiting_open_rooms.remove(other_player)
+
+    playing_client_sockets.append(conn)
+    playing_client_sockets.append(other_player)
+    not_playing_client_sockets.remove(conn)
+    not_playing_client_sockets.remove(other_player)
+
+    players = [other_player, conn]
+    game_thread = threading.Thread(target=play, args=[players])
+    game_thread.start()
+    game_thread.join()
+
+    playing_client_sockets.remove(conn)
+    playing_client_sockets.remove(other_player)
+    not_playing_client_sockets.append(conn)
+    not_playing_client_sockets.append(other_player)
+
+
+def play(players):
     board = game.Board()
     turn1 = True
     turn2 = False
     turn = 0
-
-    str_board = commprot.board_to_string(board.board)
-    send_to_players(players, str_board)
+    send_players_board(players, board)
 
     while turn < 42 and not game.check_board(board):
         if turn1:
-            players[0].send("--your turn--".encode())
-            players[1].send("not your turn".encode())
-            place = eval(players[0].recv(1024))
-            board.choose_cell(1, place)
+            build_and_send_message(players[0], commprot.SERVER_CMD["status_msg"], "YOUR_TURN", True)
+            build_and_send_message(players[1], commprot.SERVER_CMD["status_msg"], "NOT_YOUR_TURN", True)
+
+            cmd, place = recv_message_and_parse(players[0])
+            if cmd == commprot.CLIENT_CMD["choose_cell_msg"]:
+                place = (int(place[0]), int(place[2]))
+                board.choose_cell(1, place)
+
         elif turn2:
-            players[0].send("not your turn".encode())
-            players[1].send("--your turn--".encode())
-            place = eval(players[1].recv(1024))
-            board.choose_cell(2, place)
+            build_and_send_message(players[1], commprot.SERVER_CMD["status_msg"], "YOUR_TURN", True)
+            build_and_send_message(players[0], commprot.SERVER_CMD["status_msg"], "NOT_YOUR_TURN", True)
 
-        str_board = commprot.board_to_string(board.board)
-        send_to_players(players, str_board)
+            cmd, place = recv_message_and_parse(players[1])
+            if cmd == commprot.CLIENT_CMD["choose_cell_msg"]:
+                place = (int(place[0]), int(place[2]))
+                board.choose_cell(2, place)
 
+        send_players_board(players, board)
         turn1 = not turn1
         turn2 = not turn2
         turn += 1
 
-    send_to_players(players, "-----end-----")
+    build_and_send_message(players[0], commprot.SERVER_CMD["game_over_msg"], "", player=True)
+    build_and_send_message(players[1], commprot.SERVER_CMD["game_over_msg"], "", player=True)
+    time.sleep(2)
 
     winner = board.winner
     if winner == 1:
         print("player 1 won!")
-        players[0].send("-you won-".encode())
-        players[1].send("-you lost".encode())
+        build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "YOU_WON", player=True)
+        build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "YOU_LOST", player=True)
     elif winner == 2:
         print("player 2 won!")
-        players[1].send("-you won-".encode())
-        players[0].send("-you lost".encode())
+        build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "YOU_LOST", player=True)
+        build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "YOU_WON", player=True)
     elif winner == 0:
         print("game over")
-        send_to_players(players, "game over")
+        build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "GAME_OVER", player=True)
+        build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "GAME_OVER", player=True)
 
 
 IP = '127.0.0.1'
@@ -245,9 +296,10 @@ server_socket.listen(5)
 def main():
     global users
     global messages_to_send
+    global playing_client_sockets
     global not_playing_client_sockets
 
-    print("Welcome to the trivia server")
+    print(Fore.MAGENTA + "Welcome to the 4IL server!!" + Style.RESET_ALL)
 
     # users = load_user_database()
     # questions = load_questions()

@@ -1,5 +1,4 @@
 import numpy as np
-
 import server
 
 
@@ -10,13 +9,21 @@ def print_hi():
     BOARD[3, 4] = 1
     BOARD[4, 3] = 1
 
-    print(BOARD, "\n\n\n\n")
+    # print(BOARD, "\n\n\n\n")
 
-    string = board_to_string(BOARD)
-    string_to_board(string)
+    # string = board_to_string(BOARD)
+    # string_to_board(string)
+    #
+    # print(int("    1"))
 
-    print(int("    1"))
-
+    # lst = [1,2,3,4,5]
+    lst = []
+    print(lst)
+    try:
+        lst.remove(lst[0])
+    except IndexError:
+        pass
+    print(lst)
 
 
 def board_to_string(board):
@@ -43,4 +50,4 @@ def string_to_board(string):
 
 
 if __name__ == '__main__':
-    print(server.create_id())
+    print_hi()

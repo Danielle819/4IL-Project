@@ -1,6 +1,7 @@
 import commprot
 import socket
 import game
+from colorama import Fore, Style
 
 # CONSTANTS
 IP = '127.0.0.1'
@@ -17,7 +18,7 @@ def build_and_send_message(conn, code, msg):
     Returns: Nothing
     """
     message = commprot.build_message(code, msg)
-    print("build and send message mtd - sent:", message)
+    # print("----build_and_send_message - sent:", message)
     conn.send(message.encode())
 
 
@@ -34,8 +35,9 @@ def recv_message_and_parse(conn):
         data = conn.recv(10019).decode()
     except ConnectionResetError:
         return None, None
+    # print("----recv_message_and_parse - got:", data)
     cmd, msg = commprot.parse_message(data)
-    print("recv message and parse mtd - got:", cmd, "|", msg)
+    # print("----recv_message_and_parse - commprot parsed:", cmd, "|", msg)
     return cmd, msg
 
 
@@ -46,8 +48,11 @@ def build_send_recv_parse(conn, cmd, data):
 
 # OTHER HELPER METHODS
 
-def print_board(client_socket):
-    board = client_socket.recv(83).decode()
+def recv_and_print_board(client_socket):
+    cmd, board = recv_message_and_parse(client_socket)
+    if cmd != commprot.SERVER_CMD["updated_board_msg"]:
+        print("something went wrong")
+        return None
     board = commprot.string_to_board(board)
     print("\n")
     print(board, "\n")
@@ -64,7 +69,7 @@ def create_id_room(client_socket):
     Return: None if the room was not created
     """
     response, ID = build_send_recv_parse(client_socket, commprot.CLIENT_CMD["create_id_room_msg"], "")
-    print(response)
+    # print(response)
     if response == commprot.SERVER_CMD["create_id_room_ok_msg"]:
         print(ID)
         play(client_socket)
@@ -86,29 +91,65 @@ def join_id_room(client_socket):
         play(client_socket, False)
     else:
         print(_)
+
+
+def create_open_room(client_socket):
+    """
+    sends the server a message that client wants to create an open room,
+    gets a response (was the room created) and starts the game
+    Parameters: client_socket (socket)
+    Return: None if the room was not created
+    """
+    response, _ = build_send_recv_parse(client_socket, commprot.CLIENT_CMD["create_open_room_msg"], "")
+    if response == commprot.SERVER_CMD["create_open_room_ok_msg"]:
+        play(client_socket)
+    else:
+        print("something went wrong")
         return
+
+
+def join_open_room(client_socket):
+    """
+    sends the server a message that the client wants to join an open room
+    and starts the game if response was ok. if not, prints error
+    Parameters: client_socket (socket)
+    Return: None if the room was not created
+    """
+    response, _ = build_send_recv_parse(client_socket, commprot.CLIENT_CMD["join_open_room_msg"], "")
+    if response == commprot.SERVER_CMD["no_open_rooms_msg"]:
+        print("no rooms were available. try again later")
+        return
+    elif response == commprot.SERVER_CMD["join_open_room_ok_msg"]:
+        play(client_socket, False)
+    else:
+        print(_)
 
 
 def play(client_socket, creator=True):
     if creator:
         print("waiting for another player to join...")
-    status = client_socket.recv(26).decode()
-    print(status)
 
-    board = print_board(client_socket)
-    status = client_socket.recv(13).decode()
-    while status != "-----end-----":
-        if status == "--your turn--":
+    board = recv_and_print_board(client_socket)
+    cmd, status = recv_message_and_parse(client_socket)
+    while cmd != commprot.SERVER_CMD["game_over_msg"]:
+        if status == "YOUR_TURN":
             place = game.get_place(board)
-            client_socket.send(str(place).encode())
-            board = print_board(client_socket)
-        elif status == "not your turn":
+            build_and_send_message(client_socket, commprot.CLIENT_CMD["choose_cell_msg"], str(place[0])+"#"+str(place[1]))
+            board = recv_and_print_board(client_socket)
+        elif status == "NOT_YOUR_TURN":
             print("waiting for other player to play...")
-            board = print_board(client_socket)
-        status = client_socket.recv(13).decode()
+            board = recv_and_print_board(client_socket)
+        cmd, status = recv_message_and_parse(client_socket)
 
-    status = client_socket.recv(9).decode()
-    print(status)
+    cmd, result = recv_message_and_parse(client_socket)
+    if result == "YOU_WON":
+        print("you won! well done!")
+    elif result == "YOU_LOST":
+        print("you lost. good luck next time!")
+    elif result == "GAME_OVER":
+        print("the game is over. good luck next time!")
+    else:
+        print("result:", result)
 
 
 def main():
@@ -122,6 +163,8 @@ def main():
     print("\nWHAT DO YOU WANT TO DO?")
     print("commands: CID - create room with ID")
     print("          JID - join room with ID")
+    print("          COD - create open room")
+    print("          JOD - join open room")
     print("          Q - quit")
     # print("          S - get your score")
     # print("          H - get the scores table")
@@ -130,10 +173,14 @@ def main():
     cmd = input("your command: ")
 
     while cmd != 'L' and cmd != "l":
-        if cmd == "CID" or "cid":
+        if cmd == "CID" or cmd == "cid":
             create_id_room(client_socket)
-        elif cmd == "JID" or "jid":
+        elif cmd == "JID" or cmd == "jid":
             join_id_room(client_socket)
+        elif cmd == "COD" or cmd == "cod":
+            create_open_room(client_socket)
+        elif cmd == "JOD" or cmd == "jod":
+            join_open_room(client_socket)
         # elif cmd == "Q" or cmd == "q":
         #     play_question(client_socket)
         # elif cmd == "H" or cmd == "h":
@@ -147,6 +194,9 @@ def main():
 
         print("commands: CID - create room with ID")
         print("          JID - join room with ID")
+        print("          JID - join room with ID")
+        print("          COD - create open room")
+        print("          JOD - join open room")
         print("          Q - quit")
         # print("          S - get your score")
         # print("          H - get the scores table")

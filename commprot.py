@@ -32,13 +32,14 @@ SERVER_CMD = {
     "login_error_msg": "LOGIN_ERROR",  # 'username is not registered' or 'incorrect password'
     "create_id_room_ok_msg": "CREATE_ID_ROOM_OK",  # ID
     "create_open_room_ok_msg": "CREATE_OPEN_ROOM_OK",  # ''
-    # "in_waiting_msg": "IN_WAITING",  # ''
     "join_id_room_ok_msg": "JOIN_ID_ROOM_OK",  # ''
     "join_open_room_ok_msg": "JOIN_OPEN_ROOM_OK",  # ''
+    "no_open_rooms_msg": "NO_OPEN_ROOMS",  # ''
     "exit_room_ok_msg": "EXIT_ROOM_OK",  # ''
     "choose_cell_ok_msg": "CHOOSE_CELL_OK",  # ''
-    "not_your_turn_msg": "NOT_YOUR_TURN",  # ''
+    "status_msg": "STATUS",  # YOUR_TURN/NOT_YOUR_TURN
     "updated_board_msg": "UPDATED_BOARD",  # the updated game board
+    "game_over_msg": "GAME_OVER",  # ''
     "game_result_msg": "GAME_RESULT",  # 'winner is (username) + well done!/good luck next time!' or 'game over'
     "your_score_msg": "YOUR_SCORE",  # score
     "topten_ans_msg": "TOPTEN_ANS",  # user1: score1\nuser2: score2\n...
@@ -142,13 +143,13 @@ def board_to_string(board):
     for row in board:
         for cell in row:
             string += str(cell) + ","
-        string = string[:-1] + "|"
+        string = string[:-1] + "#"
     return string[:-1]
 
 
 def string_to_board(string):
     board = np.ndarray((6, 7), dtype=int)
-    rows = string.split("|")
+    rows = string.split("#")
     lst_board = []
     for row in rows:
         lst_board.append(row.split(","))

@@ -12,7 +12,7 @@ PORT = 1984
 
 def build_and_send_message(conn, code, msg):
     """
-    Builds a new message using chatlib, wanted code and message.
+    Builds a new message using commprot, wanted code and message.
     Prints debug info, then sends it to the given socket.
     Parameters: conn (socket object), code (str), msg (str)
     Returns: Nothing
@@ -25,7 +25,7 @@ def build_and_send_message(conn, code, msg):
 def recv_message_and_parse(conn):
     """
     Receives a new message from given socket.
-    Prints debug info, then parses the message using chatlib.
+    Prints debug info, then parses the message using commprot.
     Parameters: conn (socket object)
     Returns: cmd (str) and data (str) of the received message.
     If error occurred, will return None, None

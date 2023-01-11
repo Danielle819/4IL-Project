@@ -41,15 +41,6 @@ waiting_open_rooms = []  # (waiting) client_socket
 #             messages.remove(message)
 
 
-def send_error(conn, error_msg):
-    """
-    Send error message with given message
-    Receives: socket, message error string from called function
-    Returns: None
-    """
-    build_and_send_message(conn, "ERROR", error_msg)
-
-
 # HELPER SOCKET METHODS
 
 def build_and_send_message(conn, cmd, msg, player=False):
@@ -64,7 +55,11 @@ def build_and_send_message(conn, cmd, msg, player=False):
     if not player:
         messages_to_send.append((conn, message))
     if player:
-        conn.send(message.encode())
+        try:
+            conn.send(message.encode())
+        except ConnectionResetError:
+            return False
+    return True
 
 
 def recv_message_and_parse(conn):
@@ -103,8 +98,28 @@ def create_id():
 
 def send_players_board(players, board):
     str_board = commprot.board_to_string(board.board)
-    build_and_send_message(players[0], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
-    build_and_send_message(players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
+    return send_both_players(players[0], players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, True)
+    # build_and_send_message(players[0], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
+    # build_and_send_message(players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
+
+
+def send_error(conn, error_msg, player=False):
+    """
+    Send error message with given message
+    Receives: socket, message error string from called function
+    Returns: None
+    """
+    build_and_send_message(conn, "ERROR", error_msg, player)
+
+
+def send_both_players(player1, player2, cmd, msg1, msg2):
+    if not build_and_send_message(player1, cmd, msg1, True):
+        build_and_send_message(player2, commprot.SERVER_CMD["error_msg"], "other player disconnected", True)
+        return False
+    if not build_and_send_message(player2, cmd, msg2, True):
+        build_and_send_message(player1, commprot.SERVER_CMD["error_msg"], "other player disconnected", True)
+        return False
+    return True
 
 
 # COMMANDS HANDLING METHODS
@@ -241,12 +256,18 @@ def play(players):
     turn1 = True
     turn2 = False
     turn = 0
-    send_players_board(players, board)
+
+    if not send_players_board(players, board):
+        return
 
     while turn < 42 and not game.check_board(board):
         if turn1:
-            build_and_send_message(players[0], commprot.SERVER_CMD["status_msg"], "YOUR_TURN", True)
-            build_and_send_message(players[1], commprot.SERVER_CMD["status_msg"], "NOT_YOUR_TURN", True)
+            if not send_both_players(players[0], players[1], commprot.SERVER_CMD["status_msg"],
+                                     "YOUR_TURN", "NOT_YOUR_TURN"):
+                return
+
+            # build_and_send_message(players[0], commprot.SERVER_CMD["status_msg"], "YOUR_TURN", True)
+            # build_and_send_message(players[1], commprot.SERVER_CMD["status_msg"], "NOT_YOUR_TURN", True)
 
             cmd, place = recv_message_and_parse(players[0])
             if cmd == commprot.CLIENT_CMD["choose_cell_msg"]:
@@ -254,36 +275,49 @@ def play(players):
                 board.choose_cell(1, place)
 
         elif turn2:
-            build_and_send_message(players[1], commprot.SERVER_CMD["status_msg"], "YOUR_TURN", True)
-            build_and_send_message(players[0], commprot.SERVER_CMD["status_msg"], "NOT_YOUR_TURN", True)
+            if not send_both_players(players[1], players[0], commprot.SERVER_CMD["status_msg"],
+                                     "YOUR_TURN", "NOT_YOUR_TURN"):
+                return
 
             cmd, place = recv_message_and_parse(players[1])
             if cmd == commprot.CLIENT_CMD["choose_cell_msg"]:
                 place = (int(place[0]), int(place[2]))
                 board.choose_cell(2, place)
 
-        send_players_board(players, board)
+        if not send_players_board(players, board):
+            return
         turn1 = not turn1
         turn2 = not turn2
         turn += 1
 
-    build_and_send_message(players[0], commprot.SERVER_CMD["game_over_msg"], "", player=True)
-    build_and_send_message(players[1], commprot.SERVER_CMD["game_over_msg"], "", player=True)
+    if not send_both_players(players[0], players[1], commprot.SERVER_CMD["game_over_msg"], ""):
+        return
+    # build_and_send_message(players[0], commprot.SERVER_CMD["game_over_msg"], "", player=True)
+    # build_and_send_message(players[1], commprot.SERVER_CMD["game_over_msg"], "", player=True)
     time.sleep(2)
 
     winner = board.winner
     if winner == 1:
         print("player 1 won!")
-        build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "YOU_WON", player=True)
-        build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "YOU_LOST", player=True)
+        if not send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"],
+                                 "YOU_WON", "YOU_LOST"):
+            return
+        # build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "YOU_WON", player=True)
+        # build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "YOU_LOST", player=True)
     elif winner == 2:
         print("player 2 won!")
-        build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "YOU_LOST", player=True)
-        build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "YOU_WON", player=True)
+        if not send_both_players(players[1], players[0], commprot.SERVER_CMD["game_result_msg"],
+                                 "YOU_WON", "YOU_LOST"):
+            return
+        # build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "YOU_LOST", player=True)
+        # build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "YOU_WON", player=True)
     elif winner == 0:
         print("game over")
-        build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "GAME_OVER", player=True)
-        build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "GAME_OVER", player=True)
+        if not send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"],
+                                 "GAME_OVER", "GAME_OVER"):
+            return
+        # build_and_send_message(players[0], commprot.SERVER_CMD["game_result_msg"], "GAME_OVER", player=True)
+        # build_and_send_message(players[1], commprot.SERVER_CMD["game_result_msg"], "GAME_OVER", player=True)
 
 
 IP = '127.0.0.1'

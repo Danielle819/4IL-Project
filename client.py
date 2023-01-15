@@ -49,11 +49,14 @@ def build_send_recv_parse(conn, cmd, data):
 # OTHER HELPER METHODS
 
 def recv_and_print_board(client_socket):
-    cmd, board = recv_message_and_parse(client_socket)
-    if cmd != commprot.SERVER_CMD["updated_board_msg"]:
-        print("something went wrong")
+    cmd, message = recv_message_and_parse(client_socket)
+    if cmd == commprot.SERVER_CMD["error_msg"]:
+        print(message)
         return None
-    board = commprot.string_to_board(board)
+    # if cmd != commprot.SERVER_CMD["updated_board_msg"]:
+    #     print("something went wrong")
+    #     return None
+    board = commprot.string_to_board(message)
     print("\n")
     print(board, "\n")
     return board
@@ -130,16 +133,27 @@ def play(client_socket, creator=True):
         print("waiting for another player to join...")
 
     board = recv_and_print_board(client_socket)
+    if board is None: return
     cmd, status = recv_message_and_parse(client_socket)
-    while cmd != commprot.SERVER_CMD["game_over_msg"]:
+    if cmd == commprot.SERVER_CMD["error_msg"] and status == "OTHER_PLAYER_DISCONNECTED":
+        print("other player had disconnected, game over")
+        return
+
+    while cmd != commprot.SERVER_CMD["game_over_msg"] and cmd != commprot.SERVER_CMD["error_msg"]:
         if status == "YOUR_TURN":
             place = game.get_place(board)
             build_and_send_message(client_socket, commprot.CLIENT_CMD["choose_cell_msg"], str(place[0])+"#"+str(place[1]))
             board = recv_and_print_board(client_socket)
+            if board is None: return
         elif status == "NOT_YOUR_TURN":
             print("waiting for other player to play...")
             board = recv_and_print_board(client_socket)
+            if board is None: return
         cmd, status = recv_message_and_parse(client_socket)
+
+    if cmd == commprot.SERVER_CMD["error_msg"]:
+        print(status)
+        return
 
     cmd, result = recv_message_and_parse(client_socket)
     if result == "YOU_WON":

@@ -32,15 +32,6 @@ that will run the game (and send both sockets to it)
 waiting_open_rooms = []  # (waiting) client_socket
 
 
-# def send_players_messages(messages):
-#     global playing_client_sockets
-#     for message in messages:
-#         current_socket, data = message
-#         if current_socket in playing_client_sockets:
-#             current_socket.send(data.encode())
-#             messages.remove(message)
-
-
 # HELPER SOCKET METHODS
 
 def build_and_send_message(conn, cmd, msg, player=False):
@@ -91,18 +82,6 @@ def send_waiting_messages(messages, wlist):
             messages.remove(message)
 
 
-def create_id():
-    chars = string.ascii_uppercase
-    return ''.join(random.choice(chars) for _ in range(6))
-
-
-def send_players_board(players, board):
-    str_board = commprot.board_to_string(board.board)
-    return send_both_players(players[0], players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, True)
-    # build_and_send_message(players[0], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
-    # build_and_send_message(players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
-
-
 def send_error(conn, error_msg, player=False):
     """
     Send error message with given message
@@ -112,12 +91,24 @@ def send_error(conn, error_msg, player=False):
     build_and_send_message(conn, "ERROR", error_msg, player)
 
 
+def create_id():
+    chars = string.ascii_uppercase
+    return ''.join(random.choice(chars) for _ in range(6))
+
+
+def send_players_board(players, board):
+    str_board = commprot.board_to_string(board.board)
+    return send_both_players(players[0], players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, str_board)
+    # build_and_send_message(players[0], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
+    # build_and_send_message(players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
+
+
 def send_both_players(player1, player2, cmd, msg1, msg2):
     if not build_and_send_message(player1, cmd, msg1, True):
-        build_and_send_message(player2, commprot.SERVER_CMD["error_msg"], "other player disconnected", True)
+        build_and_send_message(player2, commprot.SERVER_CMD["error_msg"], "OTHER_PLAYER_DISCONNECTED", True)
         return False
     if not build_and_send_message(player2, cmd, msg2, True):
-        build_and_send_message(player1, commprot.SERVER_CMD["error_msg"], "other player disconnected", True)
+        build_and_send_message(player1, commprot.SERVER_CMD["error_msg"], "OTHER_PLAYER_DISCONNECTED", True)
         return False
     return True
 

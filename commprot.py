@@ -26,10 +26,11 @@ CLIENT_CMD = {
 
 SERVER_CMD = {
     "signup_ok_msg": "SIGNUP_OK",  # ''
-    "signup_error_msg": "SIGNUP_ERROR",  # 'username should be 6-20 characters, letters and digits only' or
-                                         # 'password should be 8-20 characters, letters and digits only'
+    # SIGNUP_ERROR: 'username already taken' or
+    #               'username should be 6-20 characters, letters and digits only' or
+    #               'password should be 8-20 characters, letters and digits only'
     "login_ok_msg": "LOGIN_OK",  # ''
-    "login_error_msg": "LOGIN_ERROR",  # 'username is not registered' or 'incorrect password'
+    # LOGIN_ERROR: 'username is not registered' or 'incorrect password'
     "create_id_room_ok_msg": "CREATE_ID_ROOM_OK",  # ID
     "create_open_room_ok_msg": "CREATE_OPEN_ROOM_OK",  # ''
     "join_id_room_ok_msg": "JOIN_ID_ROOM_OK",  # ''
@@ -160,4 +161,23 @@ def string_to_board(string):
 
     return board
 
+
+def load_users_database():
+    users = {}
+    with open("users.txt", "r") as f:
+        data = f.read().split("\n")[:-1]
+        for line in data:
+            username, password, score = line.split("|")
+            users[username] = {"password": password, "score": int(score)}
+    return users
+
+
+def update_users_database(users):
+    # updates from: handle_signup, update_players_score
+    s_users = ""
+    for username, user in zip(users.keys(), users.values()):
+        s_users += username + "|" + user["password"] + "|" + str(user["score"]) + "\n"
+
+    with open("users.txt", "w") as f:
+        f.write(s_users)
 

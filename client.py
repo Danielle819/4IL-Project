@@ -9,6 +9,7 @@ PORT = 1984
 client_socket = socket.socket()
 client_socket.connect((IP, PORT))
 
+
 # HELPER SOCKET METHODS
 
 def build_and_send_message(code, msg):
@@ -188,11 +189,14 @@ def play(creator=True):
         return
 
     cmd, result = recv_message_and_parse()
-    if result == "YOU_WON":
-        print("you won! well done!")
-    elif result == "YOU_LOST":
+    if result == "You Won!":
+        print("You won! Well done!")
+        cmd, score = recv_message_and_parse()
+        if cmd == commprot.SERVER_CMD["game_score_msg"]:
+            print(f"You got {score} points!")
+    elif result == "You Lost":
         print("you lost. good luck next time!")
-    elif result == "GAME_OVER":
+    elif result == "Game Over":
         print("the game is over. good luck next time!")
     else:
         print("result:", result)

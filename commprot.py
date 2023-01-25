@@ -41,6 +41,7 @@ SERVER_CMD = {
     "status_msg": "STATUS",  # YOUR_TURN/NOT_YOUR_TURN
     "updated_board_msg": "UPDATED_BOARD",  # the updated game board
     "game_over_msg": "GAME_OVER",  # ''
+    "game_score_msg": "GAME_SCORE",  # score
     "game_result_msg": "GAME_RESULT",  # 'winner is (username) + well done!/good luck next time!' or 'game over'
     "your_score_msg": "YOUR_SCORE",  # score
     "topten_ans_msg": "TOPTEN_ANS",  # user1: score1\nuser2: score2\n...

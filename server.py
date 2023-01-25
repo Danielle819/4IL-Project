@@ -6,7 +6,7 @@ import game
 import string
 import random
 import threading
-from colorama import Fore, Style
+# from colorama import Fore, Style
 
 # GLOBALS
 users = {}  # username: {password: _, score: _}
@@ -99,8 +99,6 @@ def create_id():
 def send_players_board(players, board):
     str_board = commprot.board_to_string(board.board)
     return send_both_players(players[0], players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, str_board)
-    # build_and_send_message(players[0], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
-    # build_and_send_message(players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, player=True)
 
 
 def send_both_players(player1, player2, cmd, msg1, msg2):
@@ -113,7 +111,7 @@ def send_both_players(player1, player2, cmd, msg1, msg2):
     return True
 
 
-def update_players_score(username, score):
+def update_players_score(username, turns):
     '''
     updates winner player's score in the users dictionary and in db
     parameters: username - string (not socket), score - int
@@ -121,8 +119,18 @@ def update_players_score(username, score):
 
     global users
 
+    winner_turns = (turns - 1) / 2
+    if 4 <= winner_turns <= 10:
+        score = 25
+    elif 11 <= winner_turns <= 20:
+        score = 15
+    else:
+        score = 10
+
     users[username]["score"] += score
+    print(users)
     commprot.update_users_database(users)
+    return score
 
 
 # COMMANDS HANDLING METHODS
@@ -148,8 +156,6 @@ def handle_client_message(conn, cmd, data):
         else:
             send_error(conn, "User Was Not Connected")
             return
-
-    # username = logged_users[conn.getpeername()]
 
     if cmd == "LOGOUT":
         pass
@@ -243,9 +249,7 @@ def handle_join_id_room(conn, ID):
     not_playing_client_sockets.remove(waiting_id_rooms[ID])
 
     players = [waiting_id_rooms[ID], conn]
-    winner = play(players)
-    update_players_score(winner, 10)
-
+    play(players)
 
     playing_client_sockets.remove(players[0])
     playing_client_sockets.remove(players[1])
@@ -298,14 +302,14 @@ def play(players):
     board = game.Board()
     turn1 = True
     turn2 = False
-    turn = 0
+    turns = 0
 
     usernames = [logged_users[players[0].getpeername()], logged_users[players[1].getpeername()]]
 
     if not send_players_board(players, board):
         return
 
-    while turn < 42 and not game.check_board(board):
+    while turns < 42 and not game.check_board(board):
         if turn1:
             if not send_both_players(players[0], players[1], commprot.SERVER_CMD["status_msg"],
                                      "YOUR_TURN", "NOT_YOUR_TURN"):
@@ -328,23 +332,23 @@ def play(players):
             return
         turn1 = not turn1
         turn2 = not turn2
-        turn += 1
+        turns += 1
 
     if not send_both_players(players[0], players[1], commprot.SERVER_CMD["game_over_msg"], "", ""):
         return
-    time.sleep(2)
+    time.sleep(0.5)
 
     winner = board.winner
     if winner == 1:
-        print("player 1 won!")
-        send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "YOU_WON", "YOU_LOST")
-        return usernames[0]
+        send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "You Won!", "You lost")
+        score = update_players_score(usernames[0], turns)
+        build_and_send_message(players[0], commprot.SERVER_CMD["game_score_msg"], str(score), True)
     elif winner == 2:
-        print("player 2 won!")
-        send_both_players(players[1], players[0], commprot.SERVER_CMD["game_result_msg"], "YOU_WON", "YOU_LOST")
-        return usernames[1]
+        send_both_players(players[1], players[0], commprot.SERVER_CMD["game_result_msg"], "You Won!", "You lost")
+        score = update_players_score(usernames[1], turns)
+        build_and_send_message(players[1], commprot.SERVER_CMD["game_score_msg"], str(score), True)
 
-    send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "GAME_OVER", "GAME_OVER")
+    send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "Game Over", "Game Over")
     return
 
 
@@ -361,7 +365,8 @@ def main():
     global playing_client_sockets
     global not_playing_client_sockets
 
-    print(Fore.MAGENTA + "Welcome to the 4IL server!!" + Style.RESET_ALL)
+    # print(Fore.MAGENTA + "Welcome to the 4IL server!!" + Style.RESET_ALL)
+    print("Welcome to the 4IL server!!")
 
     users = commprot.load_users_database()
 

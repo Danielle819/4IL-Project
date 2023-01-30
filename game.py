@@ -46,6 +46,8 @@ class Board:
 
 def get_place(board):
     col = get_col()
+    if col == "E":
+        return "E"
 
     while not check_col(board, col):
         print("inaccessible place, try again.")
@@ -61,10 +63,15 @@ def get_place(board):
 def get_col():
     col = None
     while col is None:
-        try:
-            col = int(input("choose col: "))
-        except ValueError:
-            print("invalid input. try again")
+        col = input("choose col (or e to exit): ")
+        if col == "e" or col == "E":
+            return "E"
+        else:
+            try:
+                col = int(col)
+            except ValueError:
+                print("invalid input. try again")
+                col = None
     return col
 
 

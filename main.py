@@ -1,5 +1,5 @@
 import numpy as np
-import server
+# import server
 
 
 def print_hi():
@@ -11,19 +11,19 @@ def print_hi():
 
     # print(BOARD, "\n\n\n\n")
 
-    # string = board_to_string(BOARD)
+    string = board_to_string(BOARD)
     # string_to_board(string)
     #
-    # print(int("    1"))
+    print(len(string))
 
     # lst = [1,2,3,4,5]
-    lst = []
-    print(lst)
-    try:
-        lst.remove(lst[0])
-    except IndexError:
-        pass
-    print(lst)
+    # lst = []
+    # print(lst)
+    # try:
+    #     lst.remove(lst[0])
+    # except IndexError:
+    #     pass
+    # print(lst)
 
 
 def board_to_string(board):

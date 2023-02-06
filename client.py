@@ -3,7 +3,7 @@ import socket
 import game
 # from colorama import Fore, Style
 
-# CONSTANTS
+# SOCKET SETUP
 IP = '192.168.11.147'
 PORT = 1984
 client_socket = socket.socket()

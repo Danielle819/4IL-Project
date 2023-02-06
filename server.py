@@ -6,8 +6,7 @@ import game
 import string
 import random
 import threading
-
-# from colorama import Fore, Style
+from colorama import Fore, Style
 
 # GLOBALS
 users = {}  # username: {password: _, score: _}
@@ -70,9 +69,9 @@ def recv_message_and_parse(conn):
     if message == "":
         return "", ""
     # print(Fore.GREEN + "recv_message_and_parse - got:", message + Style.RESET_ALL)
-    # print("----recv_message_and_parse - message:", message)
+    # print(Fore.CYAN + "----recv_message_and_parse - message:", message + Style.RESET_ALL)
     cmd, msg = commprot.parse_message(message)
-    # print("----recv_message_and_parse - commprot parsed:", cmd, "|", msg)
+    # print(Fore.CYAN + "----recv_message_and_parse - commprot parsed:", cmd, "|", msg + Style.RESET_ALL)
     return cmd, msg
 
 
@@ -377,8 +376,8 @@ def play(players):
         score = update_players_score(usernames[1], turns)
         build_and_send_message(players[1], commprot.SERVER_CMD["game_score_msg"], str(score), True)
 
-    send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "game_over", "game_over")
-    return
+    else:
+        send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "game_over", "game_over")
 
 
 IP = '192.168.11.147'

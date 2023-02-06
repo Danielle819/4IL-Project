@@ -1,4 +1,5 @@
 import numpy as np
+import sqlite3
 # import server
 
 
@@ -50,4 +51,18 @@ def string_to_board(string):
 
 
 if __name__ == '__main__':
-    print_hi()
+    db = sqlite3.connect("sqlite\\db\\users.db")
+    cursor = db.cursor()
+
+    cmd = "INSERT INTO Users (username, password, score) VALUES ('user1', 'user1', 0)"
+    cursor.execute(cmd)
+    cursor.commit()
+
+    cmd = "SELECT * FROM Users"
+    cursor.execute(cmd)
+    rows = cursor.fetchall()
+    for row in rows:
+        print(row)
+
+
+    db.close()

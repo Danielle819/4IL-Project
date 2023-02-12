@@ -1,0 +1,10 @@
+create table Users(
+    username    varchar(20)     not null,
+    password    varchar(20)     not null,
+    score       int             not null,
+    primary key(username)
+);
+
+insert into Users (username, password, score) values ("user1", "user1", 0)
+
+select * from Users

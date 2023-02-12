@@ -51,18 +51,40 @@ def string_to_board(string):
 
 
 if __name__ == '__main__':
-    db = sqlite3.connect("sqlite\\db\\users.db")
-    cursor = db.cursor()
+    conn = None
+    try:
+        conn = sqlite3.connect("c:\\Users\\cyber\\sqlite\\usersdb.db")
+    except:
+        print("didnt work")
 
-    cmd = "INSERT INTO Users (username, password, score) VALUES ('user1', 'user1', 0)"
-    cursor.execute(cmd)
-    cursor.commit()
+    sql = ''' INSERT INTO Users (username,password,score)
+                  VALUES('user3','user3',0) '''
+    cur = conn.cursor()
+    Users = ('Cool App with SQLite & Python', '2015-01-01', '2015-01-30')
+    cur.execute(sql)
+    conn.commit()
+    cur.close()
+    conn.close()
+    # users_id = cur.lastrowid
 
-    cmd = "SELECT * FROM Users"
-    cursor.execute(cmd)
-    rows = cursor.fetchall()
-    for row in rows:
-        print(row)
 
 
-    db.close()
+
+
+
+
+    # db = sqlite3.connect("sqlite\\db\\users.db")
+    # cursor = db.cursor()
+    #
+    # cmd = "INSERT INTO Users (username, password, score) VALUES ('user1', 'user1', 0)"
+    # cursor.execute(cmd)
+    # cursor.commit()
+    #
+    # cmd = "SELECT * FROM Users"
+    # cursor.execute(cmd)
+    # rows = cursor.fetchall()
+    # for row in rows:
+    #     print(row)
+    #
+    #
+    # db.close()

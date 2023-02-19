@@ -50,41 +50,49 @@ def string_to_board(string):
     return board
 
 
+def read_database(db):
+    if db == "users":
+        try:
+            db_conn = sqlite3.connect(r"sqlite\usersdb.db")
+        except:
+            print("didnt work")
+            return None
+
+        sql = ''' SELECT * FROM Users '''
+        cur = conn.cursor()
+        cur.execute(sql)
+
+        data = cur.fetchall()
+        users = {}
+        for t in data:
+            users[t[0]] = {'password': t[1], 'score': t[2]}
+
+        return users
+
+
+
 if __name__ == '__main__':
     conn = None
     try:
-        conn = sqlite3.connect("c:\\Users\\cyber\\sqlite\\usersdb.db")
+        conn = sqlite3.connect(r"sqlite\usersdb.db")
     except:
         print("didnt work")
 
-    sql = ''' INSERT INTO Users (username,password,score)
-                  VALUES('user3','user3',0) '''
+    sql = ''' SELECT * FROM Users '''
     cur = conn.cursor()
-    Users = ('Cool App with SQLite & Python', '2015-01-01', '2015-01-30')
+    # Users = ('Cool App with SQLite & Python', '2015-01-01', '2015-01-30')
     cur.execute(sql)
+    data = cur.fetchall()
+    print(data)
+
+    users = {}
+    for t in data:
+        users[t[0]] = {'password': t[1], 'score': t[2]}
+    print(users)
+
     conn.commit()
     cur.close()
     conn.close()
     # users_id = cur.lastrowid
 
 
-
-
-
-
-
-    # db = sqlite3.connect("sqlite\\db\\users.db")
-    # cursor = db.cursor()
-    #
-    # cmd = "INSERT INTO Users (username, password, score) VALUES ('user1', 'user1', 0)"
-    # cursor.execute(cmd)
-    # cursor.commit()
-    #
-    # cmd = "SELECT * FROM Users"
-    # cursor.execute(cmd)
-    # rows = cursor.fetchall()
-    # for row in rows:
-    #     print(row)
-    #
-    #
-    # db.close()

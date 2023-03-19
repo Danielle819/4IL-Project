@@ -59,7 +59,7 @@ def read_database(db):
             return None
 
         sql = ''' SELECT * FROM Users '''
-        cur = conn.cursor()
+        cur = db_conn.cursor()
         cur.execute(sql)
 
         data = cur.fetchall()
@@ -69,6 +69,8 @@ def read_database(db):
 
         return users
 
+def update_database(db, db_dict):
+    pass
 
 
 if __name__ == '__main__':
@@ -77,22 +79,26 @@ if __name__ == '__main__':
         conn = sqlite3.connect(r"sqlite\usersdb.db")
     except:
         print("didnt work")
+    else:
+        u_score = read_database("users")["user1"]["score"]
+        cur = conn.cursor()
+        sql = f''' UPDATE Users SET score = {u_score + 5} WHERE username = 'user1' '''
+        cur.execute(sql)
+        sql = ''' SELECT * FROM Users '''
+        cur.execute(sql)
+        data = cur.fetchall()
+        print(data)
 
-    sql = ''' SELECT * FROM Users '''
-    cur = conn.cursor()
-    # Users = ('Cool App with SQLite & Python', '2015-01-01', '2015-01-30')
-    cur.execute(sql)
-    data = cur.fetchall()
-    print(data)
+        users = {}
+        for t in data:
+            users[t[0]] = {'password': t[1], 'score': t[2]}
+        print(users)
 
-    users = {}
-    for t in data:
-        users[t[0]] = {'password': t[1], 'score': t[2]}
-    print(users)
+        conn.commit()
+        cur.close()
+        conn.close()
+        users_id = cur.lastrowid
 
-    conn.commit()
-    cur.close()
-    conn.close()
-    # users_id = cur.lastrowid
+
 
 

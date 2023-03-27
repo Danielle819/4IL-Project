@@ -1,4 +1,5 @@
 import numpy as np
+import sqlite3
 
 # Protocol Constants
 CMD_FIELD_LENGTH = 20  # Exact length of cmd field (in bytes)
@@ -212,5 +213,50 @@ def update_users_database(users):
     with open("users.txt", "w") as f:
         f.write(s_users)
 
+def read_database(tb):
+    try:
+        db_conn = sqlite3.connect(r"sqlite\usersdb.db")
+    except:
+        print("didnt work")
+        return None
+    cur = db_conn.cursor()
 
+    db_dict = {}
+
+    if tb == "users":
+        sql = ''' SELECT * FROM Users '''
+        cur.execute(sql)
+        data = cur.fetchall()
+        for t in data:
+            db_dict[t[0]] = {'password': t[1], 'score': t[2]}
+
+    cur.close()
+    db_conn.close()
+    return db_dict
+
+
+def update_database(tb, db_dict, new_user=False):
+    try:
+        db_conn = sqlite3.connect(r"sqlite\usersdb.db")
+    except:
+        print("didnt work")
+        return
+    cur = db_conn.cursor()
+
+    if tb == "users":
+        for username, user in zip(db_dict.keys(), db_dict.values()):
+            if new_user:
+                sql = f'''SELECT * FROM Users WHERE username = '{username}' '''
+                cur.execute(sql)
+                result = cur.fetchone()
+                if result is None:
+                    sql = f'''INSERT INTO Users VALUES ('{username}', '{user["password"]}', {user["score"]})'''
+                    cur.execute(sql)
+            else:
+                sql = f''' UPDATE Users SET password = '{user["password"]}', score = {user["score"]} WHERE username = '{username}' '''
+                cur.execute(sql)
+        db_conn.commit()
+
+    cur.close()
+    db_conn.close()
 

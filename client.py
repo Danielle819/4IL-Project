@@ -253,7 +253,7 @@ def main():
         else:
             print("invalid answer. try again.")
 
-        print("commands: CID - create room with ID")
+        print("\ncommands: CID - create room with ID")
         print("          JID - join room with ID")
         print("          JID - join room with ID")
         print("          COD - create open room")

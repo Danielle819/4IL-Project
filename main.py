@@ -107,24 +107,30 @@ if __name__ == '__main__':
 
     conn = sqlite3.connect(r"sqlite\usersdb.db")
     cur = conn.cursor()
-    sql = '''SELECT * FROM Users WHERE username = 'user4' '''
-    cur.execute(sql)
-    print(cur.fetchone())
-    cur.close()
-    conn.close()
+    # for i in range(2, 13):
+    #     sql = f'''UPDATE Users SET score = {i} WHERE username = '{"user" + str(i)}' '''
+    #     cur.execute(sql)
+    # sql = ''' SELECT * FROM Users '''
+    # sql = '''insert into Users values ('user4', 'user4', 4)'''
+    # cur.execute(sql)
+    # sql = '''insert into Users values ('user5', 'user5', 5)'''
+    # cur.execute(sql)
+    # data = cur.fetchall()
+    # print(data)
+    # conn.commit()
+    # cur.close()
+    # conn.close()
 
-
-
-    print("before")
+    # print("before")
     print(read_database("users"))
-
-    dicty = {"user1": {"password": "user1", "score": 0}, "user2": {"password": "user2", "score": 0},
-             "user3": {"password": "user3", "score": 5}, "user4": {"password": "user4", "score": 0},
-             "user5": {"password": "user5", "score": 0}}
-
-    update_database("users", dicty)
-    print("after")
-    print(read_database("users"))
+    #
+    # dicty = {"user1": {"password": "user1", "score": 0}, "user2": {"password": "user2", "score": 0},
+    #          "user3": {"password": "user3", "score": 5}, "user4": {"password": "user4", "score": 0},
+    #          "user5": {"password": "user5", "score": 0}}
+    #
+    # update_database("users", dicty)
+    # print("after")
+    # print(read_database("users"))
 
 
 

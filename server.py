@@ -1,12 +1,11 @@
 import time
 import commprot
+import helper_funcs as HLPS
 import socket
 import select
 import game
-import string
-import random
 import threading
-from colorama import Fore, Style
+# from colorama import Fore, Style
 
 # GLOBALS
 users = {}  # username: {password: _, score: _}
@@ -85,74 +84,6 @@ def send_waiting_messages(messages, wlist):
             messages.remove(message)
 
 
-def send_error(conn, error_msg, player=False):
-    """
-    Send error message with given message
-    Receives: socket, message error string from called function
-    Returns: None
-    """
-    build_and_send_message(conn, "ERROR", error_msg, player)
-
-
-def create_id():
-    chars = string.ascii_uppercase
-    return ''.join(random.choice(chars) for _ in range(6))
-
-
-def send_players_board(players, board):
-    str_board = commprot.board_to_string(board.board)
-    return send_both_players(players[0], players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, str_board)
-
-
-def send_both_players(player1, player2, cmd, msg1, msg2):
-    if not build_and_send_message(player1, cmd, msg1, True):
-        build_and_send_message(player2, commprot.SERVER_CMD["error_msg"], "other_player_disconnected", True)
-        return False
-    if not build_and_send_message(player2, cmd, msg2, True):
-        build_and_send_message(player1, commprot.SERVER_CMD["error_msg"], "other_player_disconnected", True)
-        return False
-    return True
-
-
-def update_players_score(username, turns):
-    """
-    updates winner player's score in the users dictionary and in db
-    parameters: username - string (not socket), score - int
-    """
-
-    global users
-
-    winner_turns = (turns + 1) / 2
-    if 4 <= winner_turns <= 10:
-        score = 25
-    elif 11 <= winner_turns <= 20:
-        score = 15
-    else:
-        score = 10
-
-    users[username]["score"] += score
-    commprot.update_users_database(users)
-    return score
-
-
-def players_turn(board, player1, player2, turn):
-    if not send_both_players(player1, player2, commprot.SERVER_CMD["status_msg"],
-                             "your_turn", "not_your_turn"):
-        return "A player disconnected"
-
-    cmd, place = recv_message_and_parse(player1)
-    if cmd == commprot.CLIENT_CMD["exit_room_msg"]:
-        send_both_players(player1, player2, commprot.SERVER_CMD["game_over_msg"], "you_exited", "other_player_exited")
-        return "A player exited the room"
-
-    elif cmd == commprot.CLIENT_CMD["choose_cell_msg"]:
-        place = (int(place[0]), int(place[2]))
-        board.choose_cell(turn, place)
-        return "GAME ON"
-
-    return place
-
-
 # COMMANDS HANDLING METHODS
 
 def handle_client_message(conn, cmd, data):
@@ -168,13 +99,13 @@ def handle_client_message(conn, cmd, data):
             if username not in logged_users.values():
                 handle_login(conn, data)
             else:
-                send_error(conn, "user_logged_in")
+                HLPS.send_error(conn, "user_logged_in")
             return
         elif cmd == "SIGNUP":
             handle_signup(conn, data)
             return
         else:
-            send_error(conn, "user_not_connected")
+            HLPS.send_error(conn, "user_not_connected")
             return
 
     if cmd == "LOGOUT":
@@ -189,14 +120,12 @@ def handle_client_message(conn, cmd, data):
     elif cmd == "JOIN_OPEN_ROOM":
         th = threading.Thread(target=handle_join_open_room, args=[conn])
         th.start()
-    elif cmd == "EXIT_ROOM":
-        pass
     elif cmd == "MY_SCORE":
-        pass
+        handle_my_score(conn)
     elif cmd == "TOPTEN":
         pass
     else:
-        send_error(conn, "unrecognized_command")
+        HLPS.send_error(conn, "unrecognized_command")
 
 
 def handle_login(conn, data):
@@ -206,10 +135,10 @@ def handle_login(conn, data):
     username, password = data.split("#")
 
     if username not in users:
-        send_error(conn, "username_not_registered")
+        HLPS.send_error(conn, "username_not_registered")
         return
     elif password != users[username]["password"]:
-        send_error(conn, "incorrect_password")
+        HLPS.send_error(conn, "incorrect_password")
         return
 
     logged_users[conn.getpeername()] = username
@@ -240,17 +169,17 @@ def handle_signup(conn, data):
     username, password = data.split("#")
 
     if username in users.keys():
-        send_error(conn, "username_taken")
+        HLPS.send_error(conn, "username_taken")
         return
     if len(username) < 6 or len(username) > 20 or not username.isalnum():
-        send_error(conn, "username_restrictions")
+        HLPS.send_error(conn, "username_restrictions")
         return
     if len(password) < 8 or len(username) > 20 or not username.isalnum():
-        send_error(conn, "password_restrictions")
+        HLPS.send_error(conn, "password_restrictions")
         return
 
     users[username] = {"password": password, "score": 0}
-    commprot.update_users_database(users)
+    HLPS.update_database(True)
     build_and_send_message(conn, commprot.SERVER_CMD["signup_ok_msg"], "")
 
 
@@ -260,9 +189,9 @@ def handle_create_id_room(conn):
     and puts them in the waiting list
     parameters: conn (client socket)
     """
-    ID = create_id()
+    ID = HLPS.create_id()
     while ID in waiting_id_rooms:
-        ID = create_id()
+        ID = HLPS.create_id()
     waiting_id_rooms[ID] = conn
     build_and_send_message(conn, commprot.SERVER_CMD["create_id_room_ok_msg"], ID)
 
@@ -315,7 +244,7 @@ def handle_join_open_room(conn):
     """
     global waiting_open_rooms
     if len(waiting_open_rooms) == 0:
-        send_error(conn, "no_open_rooms")
+        HLPS.send_error(conn, "no_open_rooms")
         return
 
     build_and_send_message(conn, commprot.SERVER_CMD["join_open_room_ok_msg"], "", player=True)
@@ -336,6 +265,17 @@ def handle_join_open_room(conn):
     not_playing_client_sockets.append(other_player)
 
 
+def handle_my_score(conn):
+    global users
+    global logged_users
+
+    username = logged_users[conn.getpeername()]
+    score = users[username]["score"]
+    build_and_send_message(conn, commprot.SERVER_CMD["your_score_msg"], score)
+
+
+# GAME OPERATOR
+
 def play(players):
     board = game.Board()
     turn1 = True
@@ -344,44 +284,45 @@ def play(players):
 
     usernames = [logged_users[players[0].getpeername()], logged_users[players[1].getpeername()]]
 
-    if not send_players_board(players, board):
+    if not HLPS.send_players_board(players, board):
         return
 
     while turns < 42 and not game.check_board(board):
         if turn1:
-            status = players_turn(board, players[0], players[1], 1)
+            status = HLPS.players_turn(board, players[0], players[1], 1)
         else:
-            status = players_turn(board, players[1], players[0], 2)
+            status = HLPS.players_turn(board, players[1], players[0], 2)
 
         if status != "GAME ON":
             return
 
-        if not send_players_board(players, board):
+        if not HLPS.send_players_board(players, board):
             return
         turn1 = not turn1
         turn2 = not turn2
         turns += 1
 
-    if not send_both_players(players[0], players[1], commprot.SERVER_CMD["game_over_msg"], "", ""):
+    if not HLPS.send_both_players(players[0], players[1], commprot.SERVER_CMD["game_over_msg"], "", ""):
         return
     # time.sleep(0.5)
 
     winner = board.winner
     if winner == 1:
-        send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "you_won", "you_lost")
-        score = update_players_score(usernames[0], turns)
+        HLPS.send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "you_won", "you_lost")
+        score = HLPS.update_players_score(usernames[0], turns)
         build_and_send_message(players[0], commprot.SERVER_CMD["game_score_msg"], str(score), True)
     elif winner == 2:
-        send_both_players(players[1], players[0], commprot.SERVER_CMD["game_result_msg"], "you_won", "you_lost")
-        score = update_players_score(usernames[1], turns)
+        HLPS.send_both_players(players[1], players[0], commprot.SERVER_CMD["game_result_msg"], "you_won", "you_lost")
+        score = HLPS.update_players_score(usernames[1], turns)
         build_and_send_message(players[1], commprot.SERVER_CMD["game_score_msg"], str(score), True)
-
     else:
-        send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "game_over", "game_over")
+        HLPS.send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "game_over", "game_over")
 
 
-IP = '192.168.11.147'
-PORT = 1984
+# SERVER SETUP
+
+IP = '127.0.0.1'
+PORT = 1995
 server_socket = socket.socket()
 server_socket.bind((IP, PORT))
 server_socket.listen(5)
@@ -396,7 +337,7 @@ def main():
     # print(Fore.MAGENTA + "Welcome to the 4IL server!!" + Style.RESET_ALL)
     print("Welcome to the 4IL server!!")
 
-    users = commprot.load_users_database()
+    users = HLPS.read_database("users")
 
     # server_socket = setup_socket()
 

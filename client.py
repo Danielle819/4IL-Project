@@ -4,8 +4,8 @@ import game
 # from colorama import Fore, Style
 
 # SOCKET SETUP
-IP = '192.168.11.147'
-PORT = 1984
+IP = '127.0.0.1'
+PORT = 1985
 client_socket = socket.socket()
 client_socket.connect((IP, PORT))
 
@@ -105,7 +105,6 @@ def create_id_room():
     """
     sends the server a message that client wants to create an id room,
     gets a response (was the room created) and the id (if it was) and starts the game
-    Parameters: client_socket (socket)
     Return: None if the room was not created
     """
     global client_socket
@@ -123,8 +122,6 @@ def join_id_room():
     """
     sends the server a message that the client wants to join an id room
     and the room's id, and starts the game if response was ok. if not, prints error
-    Parameters: client_socket (socket)
-    Return: None if the room was not created
     """
     ID = input("enter room ID: ")
     response, _ = build_send_recv_parse(commprot.CLIENT_CMD["join_id_room_msg"], ID)
@@ -138,8 +135,6 @@ def create_open_room():
     """
     sends the server a message that client wants to create an open room,
     gets a response (was the room created) and starts the game
-    Parameters: client_socket (socket)
-    Return: None if the room was not created
     """
     response, _ = build_send_recv_parse(commprot.CLIENT_CMD["create_open_room_msg"], "")
     if response == commprot.SERVER_CMD["create_open_room_ok_msg"]:
@@ -153,18 +148,26 @@ def join_open_room():
     """
     sends the server a message that the client wants to join an open room
     and starts the game if response was ok. if not, prints error
-    Parameters: client_socket (socket)
-    Return: None if the room was not created
     """
     response, _ = build_send_recv_parse(commprot.CLIENT_CMD["join_open_room_msg"], "")
-    # if response == commprot.SERVER_CMD["error_msg"]:
-    #     print(commprot.DATA_MESSAGES[_])
-    #     return
     if response == commprot.SERVER_CMD["join_open_room_ok_msg"]:
         play(False)
     else:
         print(commprot.DATA_MESSAGES[_])
 
+
+def my_score():
+    """
+    sends the server a message that the client wants to know their score
+    """
+    cmd, score = build_send_recv_parse(commprot.CLIENT_CMD["my_score_msg"], "")
+    if cmd == commprot.SERVER_CMD["your_score_msg"]:
+        print("My current score:", score)
+    else:
+        print("error:", cmd, score)
+
+
+# GAME OPERATOR
 
 def play(creator=True):
     if creator:
@@ -223,9 +226,9 @@ def main():
     print("          JID - join room with ID")
     print("          COD - create open room")
     print("          JOD - join open room")
+    print("          S - get your score")
     print("          L - logout")
     print("          Q - quit")
-    # print("          S - get your score")
     # print("          H - get the scores table")
     # print("          U - get all the logged users")
     cmd = input("your command: ")
@@ -239,6 +242,8 @@ def main():
             create_open_room()
         elif cmd == "JOD" or cmd == "jod":
             join_open_room()
+        elif cmd == "S" or cmd == "s":
+            my_score()
         # elif cmd == "Q" or cmd == "q":
         #     play_question(client_socket)
         # elif cmd == "H" or cmd == "h":
@@ -253,8 +258,8 @@ def main():
         print("          JID - join room with ID")
         print("          COD - create open room")
         print("          JOD - join open room")
+        print("          S - get your score")
         print("          Q - quit")
-        # print("          S - get your score")
         # print("          H - get the scores table")
         # print("          U - get all the logged users")
         print("          L - logout")

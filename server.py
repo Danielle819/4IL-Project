@@ -11,6 +11,7 @@ import string
 
 # GLOBALS
 users = {}  # username: {password: _, score: _}
+friends = {}
 logged_users = {}  # sock.getpeername(): username
 write_lock = Semaphore()
 messages_to_send = []  # (socket, message)
@@ -87,11 +88,17 @@ def send_waiting_messages(messages, wlist):
             messages.remove(message)
 
 
+def send_success(conn, msg='', player=False):
+    """
+    sends success message with given message
+    """
+    build_and_send_message(conn, "SUCCESS", msg, player)
+
+
 def send_error(conn, error_msg, player=False):
     """
     Send error message with given message
-    Receives: socket, message error string from called function
-    Returns: None
+
     """
     build_and_send_message(conn, "ERROR", error_msg, player)
 
@@ -116,18 +123,22 @@ def send_both_players(player1, player2, cmd, msg1, msg2):
     return True
 
 
-def update_database(new_user=False):
-    updatedb_th = threading.Thread(target=update_database_target, args=[new_user])
+def update_database(tb, user, new_user=False, un_cng=False):
+    updatedb_th = threading.Thread(target=update_database_target, args=[tb, user, new_user, un_cng])
     updatedb_th.start()
     updatedb_th.join()
 
 
-def update_database_target(new_user=False):
+def update_database_target(tb, user, new_user=False, un_cng=False):
     global users
+    global friends
     global write_lock
 
     write_lock.acquire()
-    commprot.update_database("users", users, new_user)
+    if tb == "users":
+        commprot.update_database("users", users, user, new_user, un_cng)
+    elif tb == "friends":
+        commprot.update_database("friends", friends, user, new_user, un_cng)
     write_lock.release()
 
 
@@ -148,7 +159,7 @@ def update_players_score(username, turns):
         score = 10
 
     users[username]["score"] += score
-    update_database()
+    update_database("users", username)
     return score
 
 
@@ -196,6 +207,10 @@ def handle_client_message(conn, cmd, data):
 
     if cmd == "LOGOUT":
         handle_logout_message(conn)
+    elif cmd == "CHANGE_USERNAME":
+        handle_change_username(conn, data)
+    elif cmd == "CHANGE_PASSWORD":
+        handle_change_password(conn, data)
     elif cmd == "CREATE_ID_ROOM":
         handle_create_id_room(conn)
     elif cmd == "CREATE_OPEN_ROOM":
@@ -209,7 +224,7 @@ def handle_client_message(conn, cmd, data):
     elif cmd == "MY_SCORE":
         handle_my_score(conn)
     elif cmd == "TOPTEN":
-        pass
+        handle_top_ten(conn)
     else:
         send_error(conn, "unrecognized_command")
 
@@ -228,7 +243,7 @@ def handle_login(conn, data):
         return
 
     logged_users[conn.getpeername()] = username
-    build_and_send_message(conn, commprot.SERVER_CMD["login_ok_msg"], "")
+    send_success(conn)
 
 
 def handle_logout_message(conn):
@@ -260,16 +275,58 @@ def handle_signup(conn, data):
     if username in users.keys():
         send_error(conn, "username_taken")
         return
-    if len(username) < 6 or len(username) > 20 or not username.isalnum():
+    if len(username) <= 6 or len(username) >= 20 or not username.isalnum():
         send_error(conn, "username_restrictions")
         return
-    if len(password) < 8 or len(username) > 20 or not username.isalnum():
+    if len(password) <= 8 or len(username) >= 20 or not username.isalnum():
         send_error(conn, "password_restrictions")
         return
 
     users[username] = {"password": password, "score": 0}
-    update_database(True)
-    build_and_send_message(conn, commprot.SERVER_CMD["signup_ok_msg"], "")
+    update_database("users", username, new_user=True)
+    send_success(conn)
+
+
+def handle_change_username(conn, data):
+    global users
+    global logged_users
+
+    pre_username, new_username = logged_users[conn.getpeername()], data
+
+    if new_username == pre_username:
+        send_error(conn, "its_current_username")
+        return
+    if new_username in users.keys():
+        send_error(conn, "username_taken")
+        return
+    if len(new_username) <= 6 or len(new_username) >= 20 or not new_username.isalnum():
+        send_error(conn, "username_restrictions")
+        return
+
+    # print("pre:", pre_username, "new:", new_username)
+    users[new_username] = users[pre_username]
+    users.pop(pre_username)
+    logged_users[conn.getpeername()] = new_username
+    update_database("users", user=(pre_username, new_username), un_cng=True)
+    send_success(conn)
+
+
+def handle_change_password(conn, data):
+    global users
+    global logged_users
+
+    username, new_password = logged_users[conn.getpeername()], data
+    pre_password = users[username]["password"]
+
+    if new_password == pre_password:
+        send_error(conn, "its_current_password")
+    if len(new_password) <= 8 or len(new_password) >= 20 or not new_password.isalnum():
+        send_error(conn, "password_restrictions")
+        return
+
+    users[username]["password"] = new_password
+    update_database("users", username)
+    send_success(conn)
 
 
 def handle_create_id_room(conn):
@@ -282,7 +339,7 @@ def handle_create_id_room(conn):
     while ID in waiting_id_rooms:
         ID = create_id()
     waiting_id_rooms[ID] = conn
-    build_and_send_message(conn, commprot.SERVER_CMD["create_id_room_ok_msg"], ID)
+    send_success(conn, msg=ID)
 
 
 def handle_join_id_room(conn, ID):
@@ -297,7 +354,7 @@ def handle_join_id_room(conn, ID):
         build_and_send_message(conn, commprot.SERVER_CMD["error_msg"], "id_not_found")
         return
 
-    build_and_send_message(conn, commprot.SERVER_CMD["join_id_room_ok_msg"], "", player=True)
+    send_success(conn, player=True)
 
     playing_client_sockets.append(conn)
     playing_client_sockets.append(waiting_id_rooms[ID])
@@ -321,7 +378,7 @@ def handle_create_open_room(conn):
     """
     global waiting_open_rooms
     waiting_open_rooms.append(conn)
-    build_and_send_message(conn, commprot.SERVER_CMD["create_open_room_ok_msg"], "")
+    send_success(conn)
 
 
 def handle_join_open_room(conn):
@@ -336,7 +393,7 @@ def handle_join_open_room(conn):
         send_error(conn, "no_open_rooms")
         return
 
-    build_and_send_message(conn, commprot.SERVER_CMD["join_open_room_ok_msg"], "", player=True)
+    send_success(conn, player=True)
     other_player = waiting_open_rooms[0]
     waiting_open_rooms.remove(other_player)
 
@@ -361,6 +418,50 @@ def handle_my_score(conn):
     username = logged_users[conn.getpeername()]
     score = users[username]["score"]
     build_and_send_message(conn, commprot.SERVER_CMD["your_score_msg"], score)
+
+
+def handle_top_ten(conn):
+    """
+    creates the current list of the top ten players and sends to client.
+    if the list is longer than 100 characters (max data field length),
+    it also breaks the list to 100 char long bits to send to the client
+    parameters: conn (client socket)
+    """
+    global users
+
+    # CREATING TOP TEN LIST
+    scores = []  # a list of the users and their scores - format: (username, score)
+    for username, user in zip(users.keys(), users.values()):
+        scores.append((username, user["score"]))
+    scores.sort(key=lambda x: x[1], reverse=True)  # sorting the list from big to small by the score
+
+    if len(scores) < 10:
+        range_num = len(scores)
+    else:
+        range_num = 10
+    topten = ""  # the topten list string - format: username1:score1#username2:score2...
+    for i in range(range_num):
+        topten += scores[i][0] + ":" + str(scores[i][1]) + "#"
+    topten = topten[:-1]
+
+    # if the topten list string is within the protocol's limits, sends the client
+    # the list as it is, with COMMAND indicating there are no more bits to come
+    if len(topten) <= commprot.MAX_DATA_LENGTH:
+        build_and_send_message(conn, commprot.SERVER_CMD["topten_fin_msg"], topten)
+        return
+
+    # if the topten list string is longer than the protocol's limit,
+    # BREAKING IT INTO 100 CHAR LONG BITS
+    bit_len = commprot.MAX_DATA_LENGTH
+    tt_len = len(topten)
+    rem = tt_len % bit_len
+    wholes = tt_len - rem
+    messages = [topten[i: i + bit_len] for i in range(0, wholes, bit_len)]
+    messages.append(topten[-rem:])
+
+    for i in range(len(messages) - 1):
+        build_and_send_message(conn, commprot.SERVER_CMD["topten_part_msg"], messages[i])
+    build_and_send_message(conn, commprot.SERVER_CMD["topten_fin_msg"], messages[-1])
 
 
 # GAME OPERATOR
@@ -410,9 +511,9 @@ def play(players):
 
 # SERVER SETUP
 
-
 def main():
     global users
+    global friends
     global messages_to_send
     global playing_client_sockets
     global not_playing_client_sockets
@@ -421,6 +522,7 @@ def main():
     print("Welcome to the 4IL server!!")
 
     users = commprot.read_database("users")
+    friends = commprot.read_database("friends")
 
     # server_socket = setup_socket()
 

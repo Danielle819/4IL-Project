@@ -16,6 +16,8 @@ CLIENT_CMD = {
     "signup_msg": "SIGNUP",  # username#password
     "login_msg": "LOGIN",  # username#password
     "logout_msg": "LOGOUT",  # ''
+    "change_username_msg": "CHANGE_USERNAME",  # username
+    "change_password_msg": "CHANGE_PASSWORD",  # password
     "create_id_room_msg": "CREATE_ID_ROOM",  # ''
     "create_open_room_msg": "CREATE_OPEN_ROOM",  # ''
     "join_id_room_msg": "JOIN_ID_ROOM",  # ID
@@ -23,26 +25,28 @@ CLIENT_CMD = {
     "exit_room_msg": "EXIT_ROOM",  #
     "choose_cell_msg": "CHOOSE_CELL",  # row#column
     "my_score_msg": "MY_SCORE",  # ''
-    "topten_msg": "TOPTEN"  # ''
+    "topten_msg": "TOPTEN",  # ''
+    "my_friends_msg": "MY_FRIENDS",  # ''
+    "remove_friends_msg": "REMOVE_FRIENDS",  # username1#username2...
+    "send_friend_request_msg": "SEND_FRIEND_REQUEST",  # username
+    "accept_friend_request_msg": "ACPT_FRIEND_REQUEST",  # username
+    "reject_friend_request_msg": "RJCT_FRIEND_REQUEST",  # username
+    "invite_to_play_msg": "INVITE_TO_PLAY",  # username
+    "accept_invitation_msg": "ACPT_INVITATION",  # username
+    "reject_invitation_msg": "RJCT_INVITATION"  # username
 }
 
 SERVER_CMD = {
-    "signup_ok_msg": "SIGNUP_OK",  # ''
-    "login_ok_msg": "LOGIN_OK",  # ''
-    "create_id_room_ok_msg": "CREATE_ID_ROOM_OK",  # ID
-    "create_open_room_ok_msg": "CREATE_OPEN_ROOM_OK",  # ''
-    "join_id_room_ok_msg": "JOIN_ID_ROOM_OK",  # ''
-    "join_open_room_ok_msg": "JOIN_OPEN_ROOM_OK",  # ''
-    "no_open_rooms_msg": "NO_OPEN_ROOMS",  # ''
-    "exit_room_ok_msg": "EXIT_ROOM_OK",  # ''
-    "choose_cell_ok_msg": "CHOOSE_CELL_OK",  # ''
+    "success_msg": "SUCCESS",  # '' or ID
     "status_msg": "STATUS",  # your_turn/not_your_turn
     "updated_board_msg": "UPDATED_BOARD",  # the updated game board
-    "game_over_msg": "GAME_OVER",  # ''
+    "game_over_msg": "GAME_OVER",  # you_exited\other_player_exited
     "game_score_msg": "GAME_SCORE",  # score
     "game_result_msg": "GAME_RESULT",  # 'you_won\you_lost\game_over'
     "your_score_msg": "YOUR_SCORE",  # score
-    "topten_ans_msg": "TOPTEN_ANS",  # user1: score1\nuser2: score2\n...
+    "topten_part_msg": "TOPTEN_ANSP",  # user1:score1#user2:score2#...
+    "topten_fin_msg": "TOPTEN_ANSF",  # user9:score9#user10:score10#...
+    "your_friends_msg": "YOUR_FRIENDS",  # user1#user2...
     "error_msg": "ERROR"  # the error
 }
 
@@ -53,8 +57,10 @@ DATA_MESSAGES = {
     "username_not_registered": "Username is not registered",
     "incorrect_password": "Password is incorrect",
     "username_taken": "Username is already taken",
-    "username_restrictions": "username should be 6-20 characters, letters and digits only",
-    "password_restrictions": "password should be 8-20 characters, letters and digits only",
+    "username_restrictions": "Username should be 6-20 characters, letters and digits only",
+    "password_restrictions": "Password should be 8-20 characters, letters and digits only",
+    "its_current_username": "That is your current username",
+    "its_current_password": "That is your current password",
     "other_player_disconnected": "Other player disconnected",
     "id_not_found": "ID was not found",
     "you_won": "You won! Well done!",
@@ -63,6 +69,9 @@ DATA_MESSAGES = {
     "other_player_exited": "The other player exited the game room",
     "you_exited": "You exited the game room",
     "no_open_rooms": "There are no open rooms available. Try again later",
+    "user_not_found": "The user you tried to send a request to was not found",
+    "user_not_currently_connected": "The user you tried to invite to play is not connected currently. Try again later",
+    "user_is_playing": "The user you tried to invite to play is currently playing. Tru again later",
     '': ''
 }
 
@@ -121,7 +130,7 @@ def parse_message(data):
     padded_msg = splt_msg[2]
     msg = ""
     for char in padded_msg:
-        if char.isalnum() or char == '_' or char == "#" or char == ",":
+        if char.isalnum() or char == '_' or char == "#" or char == "," or char == ":":
             msg += char
 
     padded_length = splt_msg[1]
@@ -213,11 +222,12 @@ def update_users_database(users):
     with open("users.txt", "w") as f:
         f.write(s_users)
 
+
 def read_database(tb):
     try:
         db_conn = sqlite3.connect(r"sqlite\usersdb.db")
     except:
-        print("didnt work")
+        print("db connecting didnt work")
         return None
     cur = db_conn.cursor()
 
@@ -230,31 +240,50 @@ def read_database(tb):
         for t in data:
             db_dict[t[0]] = {'password': t[1], 'score': t[2]}
 
+    if tb == "friends":
+        sql = ''' SELECT * FROM Friends '''
+        cur.execute(sql)
+        data = cur.fetchall()
+        for user in data:
+            db_dict[user[0]] = {"friends": user[1], "pending_requests": user[2]}
+
     cur.close()
     db_conn.close()
     return db_dict
 
 
-def update_database(tb, db_dict, new_user=False):
+def update_database(tb, db_dict, user, new_user=False, un_cng=False):
     try:
         db_conn = sqlite3.connect(r"sqlite\usersdb.db")
     except:
-        print("didnt work")
+        print("db connecting didnt work")
         return
     cur = db_conn.cursor()
 
     if tb == "users":
-        for username, user in zip(db_dict.keys(), db_dict.values()):
-            if new_user:
-                sql = f'''SELECT * FROM Users WHERE username = '{username}' '''
-                cur.execute(sql)
-                result = cur.fetchone()
-                if result is None:
-                    sql = f'''INSERT INTO Users VALUES ('{username}', '{user["password"]}', {user["score"]})'''
-                    cur.execute(sql)
-            else:
-                sql = f''' UPDATE Users SET password = '{user["password"]}', score = {user["score"]} WHERE username = '{username}' '''
-                cur.execute(sql)
+        if new_user:
+            sql = f'''INSERT INTO Users VALUES ('{user}', '{db_dict[user]["password"]}', {db_dict[user]["score"]})'''
+            cur.execute(sql)
+        elif un_cng:
+            pre_un, new_un = user
+            sql = f''' UPDATE Users SET username = '{new_un}' WHERE username = '{pre_un}' '''
+            cur.execute(sql)
+        else:
+            sql = f''' UPDATE Users SET password = '{db_dict[user]["password"]}', score = {db_dict[user]["score"]} 
+            WHERE username = '{user}' '''
+            cur.execute(sql)
+        # for username, user in zip(db_dict.keys(), db_dict.values()):
+        #     if new_user:
+        #         sql = f'''SELECT * FROM Users WHERE username = '{username}' '''
+        #         cur.execute(sql)
+        #         result = cur.fetchone()
+        #         if result is None:
+        #             sql = f'''INSERT INTO Users VALUES ('{username}', '{user["password"]}', {user["score"]})'''
+        #             cur.execute(sql)
+        #     else:
+        #         sql = f''' UPDATE Users SET password = '{user["password"]}', score = {user["score"]}
+        #         WHERE username = '{username}' '''
+        #         cur.execute(sql)
         db_conn.commit()
 
     cur.close()

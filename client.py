@@ -52,7 +52,7 @@ def build_send_recv_parse(cmd, data):
 
 def recv_and_print_board():
     cmd, message = recv_message_and_parse()
-    if cmd == commprot.SERVER_CMD["error_msg"] or cmd == commprot.SERVER_CMD["game_over_msg"]:
+    if cmd != commprot.SERVER_CMD["updated_board_msg"]:
         print(commprot.DATA_MESSAGES[message])
         return None
     # if cmd != commprot.SERVER_CMD["updated_board_msg"]:
@@ -68,7 +68,7 @@ def recv_and_print_board():
 
 def login():
     response, _ = "", ""
-    while response != commprot.SERVER_CMD["login_ok_msg"]:
+    while response != commprot.SERVER_CMD["success_msg"]:
         username = input("enter username: ")
         password = input("enter password: ")
 
@@ -83,7 +83,7 @@ def login():
 
 def signup():
     response, _ = "", ""
-    while response != commprot.SERVER_CMD["signup_ok_msg"]:
+    while response != commprot.SERVER_CMD["success_msg"]:
         username = input("enter username: ")
         password = input("enter password: ")
 
@@ -101,6 +101,35 @@ def logout():
     print("CLIENT LOGOUT")
 
 
+def change_username():
+    response, _ = "", ""
+    username = input("enter username: ")
+    while response != commprot.SERVER_CMD["success_msg"] and username != "Q" and username != "q":
+        response, _ = build_send_recv_parse(commprot.CLIENT_CMD["change_username_msg"], username)
+
+        if response == commprot.SERVER_CMD["error_msg"]:
+            print(commprot.DATA_MESSAGES[_])
+
+        username = input("enter username: ")
+    if username != "Q" and username != "q":
+        print("You have changed your username successfully!")
+
+
+def change_password():
+    response, _ = "", ""
+    password = input("enter password: ")
+    while response != commprot.SERVER_CMD["success_msg"] and password != "Q" and password != "q":
+
+        response, _ = build_send_recv_parse(commprot.CLIENT_CMD["change_password_msg"], password)
+
+        if response == commprot.SERVER_CMD["error_msg"]:
+            print(commprot.DATA_MESSAGES[_])
+
+        password = input("enter password: ")
+    if password != "Q" and password != "q":
+        print("You have changed your password successfully!")
+
+
 def create_id_room():
     """
     sends the server a message that client wants to create an id room,
@@ -110,11 +139,11 @@ def create_id_room():
     global client_socket
     response, ID = build_send_recv_parse(commprot.CLIENT_CMD["create_id_room_msg"], "")
     # print(response)
-    if response == commprot.SERVER_CMD["create_id_room_ok_msg"]:
+    if response == commprot.SERVER_CMD["success_msg"]:
         print(ID)
         play()
     else:
-        print("something went wrong")
+        print(commprot.DATA_MESSAGES[ID])
         return
 
 
@@ -125,7 +154,7 @@ def join_id_room():
     """
     ID = input("enter room ID: ")
     response, _ = build_send_recv_parse(commprot.CLIENT_CMD["join_id_room_msg"], ID)
-    if response == commprot.SERVER_CMD["join_id_room_ok_msg"]:
+    if response == commprot.SERVER_CMD["success_msg"]:
         play(False)
     else:
         print(commprot.DATA_MESSAGES[_])
@@ -137,7 +166,7 @@ def create_open_room():
     gets a response (was the room created) and starts the game
     """
     response, _ = build_send_recv_parse(commprot.CLIENT_CMD["create_open_room_msg"], "")
-    if response == commprot.SERVER_CMD["create_open_room_ok_msg"]:
+    if response == commprot.SERVER_CMD["success_msg"]:
         play()
     else:
         print(commprot.DATA_MESSAGES[_])
@@ -150,7 +179,7 @@ def join_open_room():
     and starts the game if response was ok. if not, prints error
     """
     response, _ = build_send_recv_parse(commprot.CLIENT_CMD["join_open_room_msg"], "")
-    if response == commprot.SERVER_CMD["join_open_room_ok_msg"]:
+    if response == commprot.SERVER_CMD["success_msg"]:
         play(False)
     else:
         print(commprot.DATA_MESSAGES[_])
@@ -162,9 +191,30 @@ def my_score():
     """
     cmd, score = build_send_recv_parse(commprot.CLIENT_CMD["my_score_msg"], "")
     if cmd == commprot.SERVER_CMD["your_score_msg"]:
-        print("My current score:", score)
+        print("Your current score:", score)
     else:
         print("error:", cmd, score)
+
+
+def topten():
+    cmd, data = build_send_recv_parse(commprot.CLIENT_CMD["topten_msg"], "")
+
+    if cmd == commprot.SERVER_CMD["error_msg"]:
+        print("error:", cmd, data)
+        return
+
+    topten = data
+    while cmd != commprot.SERVER_CMD["topten_fin_msg"]:
+        cmd, data = recv_message_and_parse()
+        if cmd == commprot.SERVER_CMD["error_msg"]:
+            print("error:", cmd, data)
+            return
+        topten += data
+
+    scores = topten.split("#")
+    for user in scores:
+        username, score = user.split(":")
+        print(username, "-", score)
 
 
 # GAME OPERATOR
@@ -222,47 +272,72 @@ def main():
         login()
 
     print("\nWHAT DO YOU WANT TO DO?")
-    print("commands: CID - create room with ID")
-    print("          JID - join room with ID")
-    print("          COD - create open room")
-    print("          JOD - join open room")
+    print("commands: P - play")
+    print("          E - edit your profile")
     print("          S - get your score")
+    print("          TT - get the top ten players")
     print("          L - logout")
     print("          Q - quit")
-    # print("          H - get the scores table")
-    # print("          U - get all the logged users")
     cmd = input("your command: ")
 
-    while cmd != 'L' and cmd != "l" and cmd != "Q" and cmd != "q":
-        if cmd == "CID" or cmd == "cid":
-            create_id_room()
-        elif cmd == "JID" or cmd == "jid":
-            join_id_room()
-        elif cmd == "COD" or cmd == "cod":
-            create_open_room()
-        elif cmd == "JOD" or cmd == "jod":
-            join_open_room()
+    ql_options = ['L', 'l', 'Q', 'q']
+    while cmd not in ql_options:
+
+        if cmd == "P" or cmd == "p":
+            print("\nSTART PLAYING BY:")
+            print("commands: CID - create room with ID")
+            print("          JID - join room with ID")
+            print("          COD - create open room")
+            print("          JOD - join open room")
+            print("          B - go back")
+            cmd = input("your command: ")
+
+            play_options = ['CID', 'cid', 'JID', 'jid', 'COD', 'cod', 'JOD', 'jod', 'B', 'b']
+            while cmd not in play_options:
+                cmd = input("try again, your command: ")
+
+            if cmd == "CID" or cmd == "cid":
+                create_id_room()
+            elif cmd == "JID" or cmd == "jid":
+                join_id_room()
+            elif cmd == "COD" or cmd == "cod":
+                create_open_room()
+            elif cmd == "JOD" or cmd == "jod":
+                join_open_room()
+            elif cmd == "B" or cmd == "b":
+                pass
+
+        elif cmd == "E" or cmd == "e":
+            print("commands: UN - change your username")
+            print("          P - change your password")
+            print("          B - go back")
+            cmd = input("your command: ")
+
+            edit_options = ['UN', 'un', 'P', 'p', 'B', 'b']
+            while cmd not in edit_options:
+                cmd = input("try again, your command: ")
+
+            if cmd == "UN" or cmd == "un":
+                change_username()
+            elif cmd == "P" or cmd == "p":
+                change_password()
+            elif cmd == "B" or cmd == "b":
+                pass
+
         elif cmd == "S" or cmd == "s":
             my_score()
-        # elif cmd == "Q" or cmd == "q":
-        #     play_question(client_socket)
-        # elif cmd == "H" or cmd == "h":
-        #     get_highscore(client_socket)
-        # elif cmd == "U" or cmd == "u":
-        #     get_logged_users(client_socket)
+        elif cmd == "TT" or cmd == "tt":
+            topten()
         else:
             print("invalid answer. try again.")
 
-        print("\ncommands: CID - create room with ID")
-        print("          JID - join room with ID")
-        print("          JID - join room with ID")
-        print("          COD - create open room")
-        print("          JOD - join open room")
+        print("\nWHAT DO YOU WANT TO DO?")
+        print("commands: P - play")
+        print("          E - edit your profile")
         print("          S - get your score")
-        print("          Q - quit")
-        # print("          H - get the scores table")
-        # print("          U - get all the logged users")
+        print("          TT - get the top ten players")
         print("          L - logout")
+        print("          Q - quit")
         cmd = input("WHAT DO YOU WANT TO DO? ")
 
     logout()

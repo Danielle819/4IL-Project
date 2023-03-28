@@ -27,8 +27,11 @@ CLIENT_CMD = {
     "my_score_msg": "MY_SCORE",  # ''
     "topten_msg": "TOPTEN",  # ''
     "my_friends_msg": "MY_FRIENDS",  # ''
-    "remove_friends_msg": "REMOVE_FRIENDS",  # username1#username2...
+    "my_p_requests_msg": "MY_P_REQUESTS",  # ''
+    "my_s_requests_msg": "MY_S_REQUESTS",  # ''
+    "remove_friend_msg": "REMOVE_FRIEND",  # username
     "send_friend_request_msg": "SEND_FRIEND_REQUEST",  # username
+    "remove_friend_request_msg": "RMV_FRIEND_REQUEST",  # username
     "accept_friend_request_msg": "ACPT_FRIEND_REQUEST",  # username
     "reject_friend_request_msg": "RJCT_FRIEND_REQUEST",  # username
     "invite_to_play_msg": "INVITE_TO_PLAY",  # username
@@ -44,9 +47,14 @@ SERVER_CMD = {
     "game_score_msg": "GAME_SCORE",  # score
     "game_result_msg": "GAME_RESULT",  # 'you_won\you_lost\game_over'
     "your_score_msg": "YOUR_SCORE",  # score
-    "topten_part_msg": "TOPTEN_ANSP",  # user1:score1#user2:score2#...
-    "topten_fin_msg": "TOPTEN_ANSF",  # user9:score9#user10:score10#...
-    "your_friends_msg": "YOUR_FRIENDS",  # user1#user2...
+    "topten_part_msg": "TOPTEN_PART",  # user1:score1#user2:score2#...
+    "topten_fin_msg": "TOPTEN_FIN",  # user9:score9#user10:score10#...
+    "your_friends_part_msg": "YOUR_FRIENDS_PART",  # user1#user2...
+    "your_friends_fin_msg": "YOUR_FRIENDS_FIN",  # user1#user2...
+    "your_p_requests_part_msg": "YOUR_P_REQUESTS_PART",  # user1#user2...
+    "your_p_requests_fin_msg": "YOUR_P_REQUESTS_FIN",  # user1#user2...
+    "your_s_requests_part_msg": "YOUR_S_REQUESTS_PART",  # user1#user2...
+    "your_s_requests_fin_msg": "YOUR_S_REQUESTS_FIN",  # user1#user2...
     "error_msg": "ERROR"  # the error
 }
 
@@ -69,7 +77,14 @@ DATA_MESSAGES = {
     "other_player_exited": "The other player exited the game room",
     "you_exited": "You exited the game room",
     "no_open_rooms": "There are no open rooms available. Try again later",
+    "your_username": "The username you submitted is yours",
+    "friend_not_found": "The friend you tried to remove was not in your friends list",
     "user_not_found": "The user you tried to send a request to was not found",
+    "user_in_sent_requests": "You already sent a friend request to this user",
+    "user_in_pend_requests": "This user has sent you a friend request already. Accept it!",
+    "user_in_your_friends": "The user you tried to send a request to is already in your friends list",
+    "user_not_sent": "The friend request you tried to remove does not exist",
+    "user_not_pending": "The user whose request you tried to accept was not in your pending requests list",
     "user_not_currently_connected": "The user you tried to invite to play is not connected currently. Try again later",
     "user_is_playing": "The user you tried to invite to play is currently playing. Tru again later",
     '': ''
@@ -105,7 +120,7 @@ def parse_message(data):
     """
 
     if data == "" or "|" not in data:
-        # print("-----parse_message - there is no data or there is no | in data")
+        print("-----parse_message - there is no data or there is no | in data")
         return None, None
 
     expected_fields = 3
@@ -114,7 +129,7 @@ def parse_message(data):
     padded_cmd = splt_msg[0]
 
     if padded_cmd is None:
-        # print("-----parse_message - command is None")
+        print("-----parse_message - command is None")
         return None, None
 
     # removing unnecessary spaces from the command
@@ -245,7 +260,16 @@ def read_database(tb):
         cur.execute(sql)
         data = cur.fetchall()
         for user in data:
-            db_dict[user[0]] = {"friends": user[1], "pending_requests": user[2]}
+            friends = user[1]
+            if friends is None:
+                friends = ''
+            pending_requests = user[2]
+            if pending_requests is None:
+                pending_requests = ''
+            sent_requests = user[3]
+            if sent_requests is None:
+                sent_requests = ''
+            db_dict[user[0]] = {"friends": friends, "pending_requests": pending_requests, "sent_requests": sent_requests}
 
     cur.close()
     db_conn.close()
@@ -270,7 +294,7 @@ def update_database(tb, db_dict, user, new_user=False, un_cng=False):
             cur.execute(sql)
         else:
             sql = f''' UPDATE Users SET password = '{db_dict[user]["password"]}', score = {db_dict[user]["score"]} 
-            WHERE username = '{user}' '''
+                        WHERE username = '{user}' '''
             cur.execute(sql)
         # for username, user in zip(db_dict.keys(), db_dict.values()):
         #     if new_user:
@@ -284,8 +308,19 @@ def update_database(tb, db_dict, user, new_user=False, un_cng=False):
         #         sql = f''' UPDATE Users SET password = '{user["password"]}', score = {user["score"]}
         #         WHERE username = '{username}' '''
         #         cur.execute(sql)
-        db_conn.commit()
+    elif tb == "friends":
+        if new_user:
+            sql = f''' INSERT INTO Friends VALUES ('{user}', '{db_dict[user]["friends"]}', 
+                        '{db_dict[user]["pending_requests"]}', '{db_dict[user]["sent_requests"]}') '''
+            cur.execute(sql)
+        else:
+            sql = f''' UPDATE Friends SET friends = '{db_dict[user]["friends"]}', 
+                        pending_requests = '{db_dict[user]["pending_requests"]}',
+                        sent_requests = '{db_dict[user]["sent_requests"]}'
+                        WHERE username = '{user}' '''
+            cur.execute(sql)
 
+    db_conn.commit()
     cur.close()
     db_conn.close()
 

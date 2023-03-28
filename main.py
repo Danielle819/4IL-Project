@@ -1,6 +1,7 @@
 import numpy as np
 import sqlite3
 # import server
+import commprot
 
 
 def board_to_string(board):
@@ -126,10 +127,20 @@ if __name__ == '__main__':
     # cur.close()
     # conn.close()
 
+    friends = commprot.read_database("friends")
+    print(friends)
+    flst = ""
+    for i in range(15):
+        flst += "user4#user2#user3#"
+    print(flst[:-1])
+    print(len(flst[:-1]))
+    print(len("user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3#user4#user2#user3"))
 
-    listy = [1,2,3,4]
-    try:
-        listy.remove(5)
-    except ValueError:
-        pass
+    lsts = []
+    strs = ""
+    for i in lsts:
+        strs += ""
+    print("strs", strs)
+
+
 

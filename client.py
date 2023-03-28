@@ -211,10 +211,114 @@ def topten():
             return
         topten += data
 
+    print(len(topten))
+
     scores = topten.split("#")
     for user in scores:
         username, score = user.split(":")
         print(username, "-", score)
+
+
+def my_friends():
+    cmd, data = build_send_recv_parse(commprot.CLIENT_CMD["my_friends_msg"], "")
+
+    if cmd == commprot.SERVER_CMD["error_msg"]:
+        print("error:", cmd, data)
+        return
+
+    friends_str = data
+    while cmd != commprot.SERVER_CMD["your_friends_fin_msg"]:
+        cmd, data = recv_message_and_parse()
+        if cmd == commprot.SERVER_CMD["error_msg"]:
+            print("error:", cmd, data)
+            return
+        friends_str += data
+
+    friends_lst = friends_str.replace("#", "\n")
+    print("YOUR FRIENDS LIST:\n" + friends_lst)
+
+
+def my_pending_requests():
+    cmd, data = build_send_recv_parse(commprot.CLIENT_CMD["my_p_requests_msg"], "")
+
+    if cmd == commprot.SERVER_CMD["error_msg"]:
+        print("error:", cmd, data)
+        return
+
+    reqs_str = data
+    while cmd != commprot.SERVER_CMD["your_p_requests_fin_msg"]:
+        cmd, data = recv_message_and_parse()
+        if cmd == commprot.SERVER_CMD["error_msg"]:
+            print("error:", cmd, data)
+            return
+        reqs_str += data
+
+    reqs_list = reqs_str.replace("#", "\n")
+    print("YOUR PENDING FRIEND REQUESTS LIST:\n" + reqs_list)
+
+
+def my_sent_requests():
+    cmd, data = build_send_recv_parse(commprot.CLIENT_CMD["my_s_requests_msg"], "")
+
+    if cmd == commprot.SERVER_CMD["error_msg"]:
+        print("error:", cmd, data)
+        return
+
+    reqs_str = data
+    while cmd != commprot.SERVER_CMD["your_s_requests_fin_msg"]:
+        cmd, data = recv_message_and_parse()
+        if cmd == commprot.SERVER_CMD["error_msg"]:
+            print("error:", cmd, data)
+            return
+        reqs_str += data
+
+    reqs_list = reqs_str.replace("#", "\n")
+    print("YOUR SENT FRIEND REQUESTS LIST:\n" + reqs_list)
+
+
+def remove_friend():
+    friend = input("Enter friend's username: ")
+    response, _ = build_send_recv_parse(commprot.CLIENT_CMD["remove_friend_msg"], friend)
+    if response == commprot.SERVER_CMD["success_msg"]:
+        print("Friend was removed successfully")
+    else:
+        print(commprot.DATA_MESSAGES[_])
+
+
+def send_friend_request():
+    friend = input("Enter friend's username: ")
+    response, _ = build_send_recv_parse(commprot.CLIENT_CMD["send_friend_request_msg"], friend)
+    if response == commprot.SERVER_CMD["success_msg"]:
+        print("Friend request was sent successfully")
+    else:
+        print(commprot.DATA_MESSAGES[_])
+
+
+def remove_friend_request():
+    friend = input("Enter friend's username: ")
+    response, _ = build_send_recv_parse(commprot.CLIENT_CMD["remove_friend_request_msg"], friend)
+    if response == commprot.SERVER_CMD["success_msg"]:
+        print("Friend request was removed successfully")
+    else:
+        print(commprot.DATA_MESSAGES[_])
+
+
+def accept_friend_request():
+    friend = input("Enter friend's username: ")
+    response, _ = build_send_recv_parse(commprot.CLIENT_CMD["accept_friend_request_msg"], friend)
+    if response == commprot.SERVER_CMD["success_msg"]:
+        print("Friend request was accepted successfully")
+    else:
+        print(commprot.DATA_MESSAGES[_])
+
+
+def reject_friend_request():
+    friend = input("Enter friend's username: ")
+    response, _ = build_send_recv_parse(commprot.CLIENT_CMD["reject_friend_request_msg"], friend)
+    if response == commprot.SERVER_CMD["success_msg"]:
+        print("Friend request was rejected successfully")
+    else:
+        print(commprot.DATA_MESSAGES[_])
 
 
 # GAME OPERATOR
@@ -260,7 +364,6 @@ def play(creator=True):
 
 
 def main():
-
     cmd = input("Login or Signup? (L/S): ")
     while cmd != "L" and cmd != "S":
         cmd = input("try again, Login or Signup? (L/S): ")
@@ -276,6 +379,7 @@ def main():
     print("          E - edit your profile")
     print("          S - get your score")
     print("          TT - get the top ten players")
+    print("          F - look at your friends")
     print("          L - logout")
     print("          Q - quit")
     cmd = input("your command: ")
@@ -324,6 +428,42 @@ def main():
             elif cmd == "B" or cmd == "b":
                 pass
 
+        elif cmd == "F" or cmd == "f":
+            print("commands: FL - get your friends list")
+            print("          PRL - get your pending friend requests")
+            print("          SRL - get your sent friend requests")
+            print("          RMVF - remove a friend")
+            print("          SR - send a friend request")
+            print("          RMVR - remove a friend request")
+            print("          AR - accept a friend request")
+            print("          RJR - reject a friend request")
+            print("          B - go back")
+            cmd = input("your command: ")
+
+            friend_options = ['FL', 'fl', 'PRL', 'prl', 'SRL', 'srl', 'RMVF', 'rmvf', 'SR', 'sr', 'RMVR', 'rmvr',
+                              'AR', 'ar', 'RJR', 'rjr', 'B', 'b']
+            while cmd not in friend_options:
+                cmd = input("try again, your command: ")
+
+            if cmd == "FL" or cmd == "fl":
+                my_friends()
+            elif cmd == "PRL" or cmd == "prl":
+                my_pending_requests()
+            elif cmd == "SRL" or cmd == "srl":
+                my_sent_requests()
+            elif cmd == "RMVF" or cmd == "rmvf":
+                remove_friend()
+            elif cmd == "SR" or cmd == "sr":
+                send_friend_request()
+            elif cmd == "RMVR" or cmd == "rmvr":
+                remove_friend_request()
+            elif cmd == "AR" or cmd == "ar":
+                accept_friend_request()
+            elif cmd == "RJR" or cmd == "rjr":
+                reject_friend_request()
+            elif cmd == "B" or cmd == "b":
+                pass
+
         elif cmd == "S" or cmd == "s":
             my_score()
         elif cmd == "TT" or cmd == "tt":
@@ -336,6 +476,7 @@ def main():
         print("          E - edit your profile")
         print("          S - get your score")
         print("          TT - get the top ten players")
+        print("          F - look at your friends")
         print("          L - logout")
         print("          Q - quit")
         cmd = input("WHAT DO YOU WANT TO DO? ")

@@ -73,19 +73,24 @@ def recv_message_and_parse(conn):
         return "", ""
     # print(Fore.GREEN + "recv_message_and_parse - got:", message + Style.RESET_ALL)
     # print(Fore.CYAN + "----recv_message_and_parse - message:", message + Style.RESET_ALL)
+    print("----recv_message_and_parse - got:", message)
     cmd, msg = commprot.parse_message(message)
     # print(Fore.CYAN + "----recv_message_and_parse - commprot parsed:", cmd, "|", msg + Style.RESET_ALL)
+    print("----recv_message_and_parse - commprot parsed:", cmd, "|", msg)
     return cmd, msg
 
 
 # OTHER HELPER METHODS
 
 def send_waiting_messages(messages, wlist):
-    for message in messages:
-        current_socket, data = message
+
+    for i in range(len(messages)):
+        current_socket, data = messages[0]
+        # print("----send_waiting_messages - before if:", data)
         if current_socket in wlist:
             current_socket.send(data.encode())
-            messages.remove(message)
+            # print("----send_waiting_messages - sent:", data)
+            messages.remove(messages[0])
 
 
 def send_success(conn, msg='', player=False):
@@ -101,6 +106,22 @@ def send_error(conn, error_msg, player=False):
 
     """
     build_and_send_message(conn, "ERROR", error_msg, player)
+
+
+def send_longer_message(conn, cmd, data, player=False):
+    bit_len = commprot.MAX_DATA_LENGTH
+    data_len = len(data)
+    rem = data_len % bit_len
+    wholes = data_len - rem
+    messages = [data[i: i + bit_len] for i in range(0, wholes, bit_len)]
+    messages.append(data[-rem:])
+
+    for i in range(len(messages) - 1):
+        # print("sent", i, "out of", len(messages) - 1)
+        build_and_send_message(conn, commprot.SERVER_CMD[cmd + "_part_msg"], messages[i], player)
+    # print("sending final msg")
+    build_and_send_message(conn, commprot.SERVER_CMD[cmd + "_fin_msg"], messages[-1], player)
+    # print("done")
 
 
 def create_id():
@@ -121,25 +142,6 @@ def send_both_players(player1, player2, cmd, msg1, msg2):
         build_and_send_message(player1, commprot.SERVER_CMD["error_msg"], "other_player_disconnected", True)
         return False
     return True
-
-
-def update_database(tb, user, new_user=False, un_cng=False):
-    updatedb_th = threading.Thread(target=update_database_target, args=[tb, user, new_user, un_cng])
-    updatedb_th.start()
-    updatedb_th.join()
-
-
-def update_database_target(tb, user, new_user=False, un_cng=False):
-    global users
-    global friends
-    global write_lock
-
-    write_lock.acquire()
-    if tb == "users":
-        commprot.update_database("users", users, user, new_user, un_cng)
-    elif tb == "friends":
-        commprot.update_database("friends", friends, user, new_user, un_cng)
-    write_lock.release()
 
 
 def update_players_score(username, turns):
@@ -181,6 +183,25 @@ def players_turn(board, player1, player2, turn):
     return place
 
 
+def update_database(tb, user, new_user=False, un_cng=False):
+    updatedb_th = threading.Thread(target=update_database_target, args=[tb, user, new_user, un_cng])
+    updatedb_th.start()
+    updatedb_th.join()
+
+
+def update_database_target(tb, user, new_user=False, un_cng=False):
+    global users
+    global friends
+    global write_lock
+
+    write_lock.acquire()
+    if tb == "users":
+        commprot.update_database(tb, users, user, new_user, un_cng)
+    elif tb == "friends":
+        commprot.update_database(tb, friends, user, new_user, un_cng)
+    write_lock.release()
+
+
 # COMMANDS HANDLING METHODS
 
 def handle_client_message(conn, cmd, data):
@@ -205,26 +226,48 @@ def handle_client_message(conn, cmd, data):
             send_error(conn, "user_not_connected")
             return
 
-    if cmd == "LOGOUT":
-        handle_logout_message(conn)
-    elif cmd == "CHANGE_USERNAME":
+    if cmd == commprot.CLIENT_CMD["logout_msg"]:
+        handle_logout(conn)
+    elif cmd == commprot.CLIENT_CMD["change_username_msg"]:
         handle_change_username(conn, data)
-    elif cmd == "CHANGE_PASSWORD":
+    elif cmd == commprot.CLIENT_CMD["change_password_msg"]:
         handle_change_password(conn, data)
-    elif cmd == "CREATE_ID_ROOM":
+    elif cmd == commprot.CLIENT_CMD["create_id_room_msg"]:
         handle_create_id_room(conn)
-    elif cmd == "CREATE_OPEN_ROOM":
+    elif cmd == commprot.CLIENT_CMD["create_open_room_msg"]:
         handle_create_open_room(conn)
-    elif cmd == "JOIN_ID_ROOM":
+    elif cmd == commprot.CLIENT_CMD["join_id_room_msg"]:
         th = threading.Thread(target=handle_join_id_room, args=(conn, data))  # data=ID
         th.start()
-    elif cmd == "JOIN_OPEN_ROOM":
+    elif cmd == commprot.CLIENT_CMD["join_open_room_msg"]:
         th = threading.Thread(target=handle_join_open_room, args=[conn])
         th.start()
-    elif cmd == "MY_SCORE":
+    elif cmd == commprot.CLIENT_CMD["my_score_msg"]:
         handle_my_score(conn)
-    elif cmd == "TOPTEN":
+    elif cmd == commprot.CLIENT_CMD["topten_msg"]:
         handle_top_ten(conn)
+    elif cmd == commprot.CLIENT_CMD["my_friends_msg"]:
+        handle_my_friends(conn)
+    elif cmd == commprot.CLIENT_CMD["my_p_requests_msg"]:
+        handle_my_pending_requests(conn)
+    elif cmd == commprot.CLIENT_CMD["my_s_requests_msg"]:
+        handle_my_sent_requests(conn)
+    elif cmd == commprot.CLIENT_CMD["remove_friend_msg"]:
+        handle_remove_friend(conn, data)
+    elif cmd == commprot.CLIENT_CMD["send_friend_request_msg"]:
+        handle_send_friend_request(conn, data)
+    elif cmd == commprot.CLIENT_CMD["remove_friend_request_msg"]:
+        handle_remove_friend_request(conn, data)
+    elif cmd == commprot.CLIENT_CMD["accept_friend_request_msg"]:
+        handle_accept_friend_request(conn, data)
+    elif cmd == commprot.CLIENT_CMD["reject_friend_request_msg"]:
+        handle_reject_friend_request(conn, data)
+    elif cmd == commprot.CLIENT_CMD["invite_to_play_msg"]:
+        handle_invite_to_play(conn, data)
+    elif cmd == commprot.CLIENT_CMD["accept_invitation_msg"]:
+        handle_accept_invitation(conn, data)
+    elif cmd == commprot.CLIENT_CMD["reject_invitation_msg"]:
+        handle_reject_invitation(conn, data)
     else:
         send_error(conn, "unrecognized_command")
 
@@ -246,18 +289,23 @@ def handle_login(conn, data):
     send_success(conn)
 
 
-def handle_logout_message(conn):
+def handle_logout(conn):
     """
     Closes the given socket remove user from logged_users dictionary
     Receives: socket
     Returns: None
     """
     global logged_users
+    global messages_to_send
 
     if conn in not_playing_client_sockets:
         not_playing_client_sockets.remove(conn)
     elif conn in playing_client_sockets:
         playing_client_sockets.remove(conn)
+
+    for message in messages_to_send:
+        if conn in message:
+            messages_to_send.remove(message)
 
     p_id = conn.getpeername()
     try:
@@ -291,7 +339,13 @@ def handle_change_username(conn, data):
     global users
     global logged_users
 
-    pre_username, new_username = logged_users[conn.getpeername()], data
+    try:
+        pre_username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_change_username func - client was not logged")
+        handle_logout(conn)
+        return
+    new_username = data
 
     if new_username == pre_username:
         send_error(conn, "its_current_username")
@@ -315,7 +369,14 @@ def handle_change_password(conn, data):
     global users
     global logged_users
 
-    username, new_password = logged_users[conn.getpeername()], data
+    try:
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_change_password func - client was not logged")
+        handle_logout(conn)
+        return
+
+    new_password = data
     pre_password = users[username]["password"]
 
     if new_password == pre_password:
@@ -415,7 +476,13 @@ def handle_my_score(conn):
     global users
     global logged_users
 
-    username = logged_users[conn.getpeername()]
+    try:
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_my_score func - client was not logged")
+        handle_logout(conn)
+        return
+
     score = users[username]["score"]
     build_and_send_message(conn, commprot.SERVER_CMD["your_score_msg"], score)
 
@@ -425,7 +492,6 @@ def handle_top_ten(conn):
     creates the current list of the top ten players and sends to client.
     if the list is longer than 100 characters (max data field length),
     it also breaks the list to 100 char long bits to send to the client
-    parameters: conn (client socket)
     """
     global users
 
@@ -448,20 +514,427 @@ def handle_top_ten(conn):
     # the list as it is, with COMMAND indicating there are no more bits to come
     if len(topten) <= commprot.MAX_DATA_LENGTH:
         build_and_send_message(conn, commprot.SERVER_CMD["topten_fin_msg"], topten)
-        return
+    else:
+        send_longer_message(conn, "topten", topten)
 
     # if the topten list string is longer than the protocol's limit,
     # BREAKING IT INTO 100 CHAR LONG BITS
-    bit_len = commprot.MAX_DATA_LENGTH
-    tt_len = len(topten)
-    rem = tt_len % bit_len
-    wholes = tt_len - rem
-    messages = [topten[i: i + bit_len] for i in range(0, wholes, bit_len)]
-    messages.append(topten[-rem:])
+    # bit_len = commprot.MAX_DATA_LENGTH
+    # tt_len = len(topten)
+    # rem = tt_len % bit_len
+    # wholes = tt_len - rem
+    # messages = [topten[i: i + bit_len] for i in range(0, wholes, bit_len)]
+    # messages.append(topten[-rem:])
+    #
+    # for i in range(len(messages) - 1):
+    #     build_and_send_message(conn, commprot.SERVER_CMD["topten_part_msg"], messages[i])
+    # build_and_send_message(conn, commprot.SERVER_CMD["topten_fin_msg"], messages[-1])
 
-    for i in range(len(messages) - 1):
-        build_and_send_message(conn, commprot.SERVER_CMD["topten_part_msg"], messages[i])
-    build_and_send_message(conn, commprot.SERVER_CMD["topten_fin_msg"], messages[-1])
+
+def handle_my_friends(conn):
+    """
+    sends client the list of their friends. if the list is longer than 100 characters
+    (max data field length), it also breaks the list to 100 char long bits to send to the client
+    """
+    global friends
+    global logged_users
+
+    try:  # trying to get client's username (in case an error occurred, and they disconnected)
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_my_friends func - client was not logged")
+        handle_logout(conn)
+        return
+
+    # getting user's friends list from the friends database
+    if username not in friends.keys():
+        friends_lst = ""
+    else:
+        friends_lst = friends[username]["friends"]
+
+    # if the friends list is within the protocol's limits, sends the client
+    # the list as it is, with COMMAND indicating there are no more bits to come
+    if len(friends_lst) <= commprot.MAX_DATA_LENGTH:
+        build_and_send_message(conn, commprot.SERVER_CMD["your_friends_fin_msg"], friends_lst)
+    else:
+        send_longer_message(conn, "your_friends", friends_lst)
+
+    # if the friends list  is longer than the protocol's limit,
+    # BREAKING IT INTO 100 CHAR LONG BITS
+    # bit_len = commprot.MAX_DATA_LENGTH
+    # fl_len = len(friends_lst)
+    # rem = fl_len % bit_len
+    # wholes = fl_len - rem
+    # messages = [friends_lst[i: i + bit_len] for i in range(0, wholes, bit_len)]
+    # messages.append(friends_lst[-rem:])
+    #
+    # for i in range(len(messages) - 1):
+    #     build_and_send_message(conn, commprot.SERVER_CMD["your_friends_part_msg"], messages[i])
+    # build_and_send_message(conn, commprot.SERVER_CMD["your_friends_fin_msg"], messages[-1])
+
+
+def handle_my_pending_requests(conn):
+    global friends
+    global logged_users
+
+    try:  # trying to get client's username (in case an error occurred, and they disconnected)
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_my_pending_requests func - client was not logged")
+        handle_logout(conn)
+        return
+
+    if username not in friends.keys():
+        reqs = ""
+    else:
+        reqs = friends[username]["pending_requests"]
+
+    if len(reqs) <= commprot.MAX_DATA_LENGTH:
+        build_and_send_message(conn, commprot.SERVER_CMD["your_p_requests_fin_msg"], reqs)
+    else:
+        send_longer_message(conn, "your_p_requests", reqs)
+
+
+def handle_my_sent_requests(conn):
+    global friends
+    global logged_users
+
+    try:  # trying to get client's username (in case an error occurred, and they disconnected)
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_my_sent_requests func - client was not logged")
+        handle_logout(conn)
+        return
+
+    if username not in friends.keys():
+        reqs = ""
+    else:
+        reqs = friends[username]["sent_requests"]
+
+    if len(reqs) <= commprot.MAX_DATA_LENGTH:
+        build_and_send_message(conn, commprot.SERVER_CMD["your_s_requests_fin_msg"], reqs)
+    else:
+        send_longer_message(conn, "your_s_requests", reqs)
+
+
+def handle_remove_friend(conn, data):
+    global friends
+
+    try:  # trying to get client's username (in case an error occurred, and they disconnected)
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_remove_friend func - client was not logged")
+        handle_logout(conn)
+        return
+
+    if data == username:
+        send_error(conn, "your_username")
+        return
+
+    if username not in friends.keys():
+        send_error(conn, "friend_not_found")
+        return
+
+    friends_str = friends[username]["friends"]
+    friends_lst = friends_str.split("#")
+
+    try:
+        friends_lst.remove(data)
+    except ValueError:
+        send_error(conn, "friend_not_found")
+        return
+
+    friends_str = ""
+    for friend in friends_lst:
+        friends_str += friend + "#"
+    friends_str = friends_str[:-1]
+    friends[username]["friends"] = friends_str
+    update_database("friends", username)
+    send_success(conn)
+
+    # REMOVING USER FROM THE OTHER FRIEND"S FRIEND LIST
+    if data not in friends.keys():
+        print("other friend was not found on friends db")
+        return
+
+    other_friend_str = friends[data]["friends"]
+    other_friend_lst = other_friend_str.split("#")
+
+    try:
+        other_friend_lst.remove(username)
+    except ValueError:
+        print("user was not in other friend's list")
+
+    other_friend_str = ""
+    for friend in other_friend_lst:
+        other_friend_str += friend + "#"
+    other_friend_str = other_friend_str[:-1]
+    friends[data]["friends"] = other_friend_str
+    update_database("friends", data)
+
+
+def handle_send_friend_request(conn, data):
+    global friends
+    global users
+    global logged_users
+    
+    if data not in users.keys():
+        send_error(conn, "user_not_found")
+        return
+
+    try:
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_send_friend_request func - client was not logged")
+        handle_logout(conn)
+        return
+
+    # check if the username is the user's first
+    if data == username:
+        send_error(conn, "your_username")
+        return
+
+    if username not in friends.keys():
+        friends[username] = {"friends": '', "pending_requests": '', "sent_requests": data}
+        update_database("friends", username, new_user=True)
+        send_success(conn)
+    else:
+        sent_reqs = friends[username]["sent_requests"]
+        friends_str = friends[username]["friends"]
+        pend_reqs = friends[username]["pending_requests"]
+        # checks if other user is already in user's friends list
+        friends_lst = friends_str.split("#")
+        if data in friends_lst:
+            send_error(conn, "user_in_your_friends")
+            return
+        # checks if other user is in user's pending requestes list
+        pend_reqs_lst = pend_reqs.split("#")
+        if data in pend_reqs_lst:
+            send_error(conn, "user_in_pend_requests")
+            return
+
+        if sent_reqs == "":
+            sent_reqs = data
+        else:
+            # checks if other user is already in user's sent requests list
+            sent_reqs_lst = sent_reqs.split("#")
+            if data in sent_reqs_lst:
+                send_error(conn, "user_in_sent_requests")
+                return
+            sent_reqs += "#" + data
+        friends[username]["sent_requests"] = sent_reqs
+        update_database("friends", username)
+        send_success(conn)
+
+    if data in friends.keys():
+        pend_reqs = friends[data]["pending_requests"]
+        if pend_reqs == "":
+            pend_reqs = username
+        else:
+            pend_reqs += "#" + username
+        friends[data]["pending_requests"] = pend_reqs
+        update_database("friends", data)
+    else:
+        friends[data] = {"friends": '', "pending_requests": username, "sent_requests": ''}
+        update_database("friends", data, new_user=True)
+
+
+def handle_remove_friend_request(conn, data):
+    global friends
+    global logged_users
+
+    try:
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_remove_friend_request func - client was not logged")
+        handle_logout(conn)
+        return
+
+    if username == data:
+        send_error(conn, "your_username")
+        return
+    if username not in friends.keys():
+        send_error(conn, "user_not_sent")
+        return
+
+    # removing request from username's sent requests
+    sent_reqs_str = friends[username]["sent_requests"]
+    sent_reqs_lst = sent_reqs_str.split("#")
+    try:
+        sent_reqs_lst.remove(data)
+    except ValueError:
+        send_error(conn, "user_not_sent")
+        return
+    sent_reqs_str = ""
+    for req in sent_reqs_lst:
+        sent_reqs_str += req + "#"
+    sent_reqs_str = sent_reqs_str[:-1]
+    friends[username]["sent_requests"] = sent_reqs_str
+    update_database("friends", username)
+    send_success(conn)
+
+    if data not in friends.keys():
+        print("handle_remove_friend_request func ERROR: other user was not in friends db")
+        return
+
+    # removing request from "data"'s pending requests
+    pend_reqs_str = friends[data]["pending_requests"]
+    pend_reqs_lst = pend_reqs_str.split("#")
+    try:
+        pend_reqs_lst.remove(username)
+    except ValueError:
+        print("handle_remove_friend_request func ERROR: username was not in other user's pending_requests")
+    else:
+        pend_reqs_str = ""
+        for req in pend_reqs_lst:
+            pend_reqs_str += req + "#"
+        pend_reqs_str = pend_reqs_str[:-1]
+        friends[data]["pending_requests"] = pend_reqs_str
+        update_database("friends", data)
+
+    
+
+def handle_accept_friend_request(conn, data):
+    global friends
+    global logged_users
+
+    try:
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_accept_friend_request func - client was not logged")
+        handle_logout(conn)
+        return
+    if username == data:
+        send_error(conn, "your_username")
+        return
+    if username not in friends.keys():
+        send_error(conn, "user_not_pending")
+        return
+
+    pend_reqs_str = friends[username]["pending_requests"]
+    pend_reqs_lst = pend_reqs_str.split("#")
+
+    try:
+        pend_reqs_lst.remove(data)
+    except ValueError:
+        send_error(conn, "user_not_pending")
+        return
+
+    # removing "data" from user's pending list
+    pend_reqs_str = ""
+    for req in pend_reqs_lst:
+        pend_reqs_str += req + "#"
+    pend_reqs_str = pend_reqs_str[:-1]
+    friends[username]["pending_requests"] = pend_reqs_str
+    update_database("friends", username)
+
+    # adding data to user's friends list
+    friends_str = friends[username]["friends"]
+    if friends_str == "":
+        friends_str = data
+    else:
+        friends_str += "#" + data
+    friends[username]["friends"] = friends_str
+    update_database("friends", username)
+    send_success(conn)
+
+    # HANDLING OTHER USER'S (DATA'S) FRIENDS LISTS
+    if data not in friends.keys():
+        friends[data] = {"friends": username, "pending_requests": '', "sent_requests": ''}
+        update_database("friends", data, new_user=True)
+        print("handle_accept_friend_request func ERROR: other user was not in friends db")
+        return
+
+    # removing username from "data"'s sent list
+    sent_reqs_str = friends[data]["sent_requests"]
+    sent_reqs_lst = sent_reqs_str.split("#")
+    try:
+        sent_reqs_lst.remove(username)
+    except ValueError:
+        print("handle_accept_friend_request func ERROR: other user didnt have username in sent_requests")
+    else:
+        sent_reqs_str = ""
+        for req in sent_reqs_lst:
+            sent_reqs_str += req + "#"
+        sent_reqs_str = sent_reqs_str[:-1]
+        friends[data]["sent_requests"] = sent_reqs_str
+        update_database("friends", data)
+    # adding username to "data"'s friends list
+    friends_str = friends[data]["friends"]
+    if friends_str == "":
+        friends_str = username
+    else:
+        friends_str += "#" + username
+    friends[data]["friends"] = friends_str
+    update_database("friends", data)
+
+
+def handle_reject_friend_request(conn, data):
+    global friends
+    global logged_users
+
+    try:
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_accept_friend_request func - client was not logged")
+        handle_logout(conn)
+        return
+    if username == data:
+        send_error(conn, "your_username")
+        return
+    if username not in friends.keys():
+        send_error(conn, "user_not_pending")
+        return
+
+    pend_reqs_str = friends[username]["pending_requests"]
+    pend_reqs_lst = pend_reqs_str.split("#")
+
+    try:
+        pend_reqs_lst.remove(data)
+    except ValueError:
+        send_error(conn, "user_not_pending")
+        return
+
+    # removing "data" from user's pending list
+    pend_reqs_str = ""
+    for req in pend_reqs_lst:
+        pend_reqs_str += req + "#"
+    pend_reqs_str = pend_reqs_str[:-1]
+    friends[username]["pending_requests"] = pend_reqs_str
+    update_database("friends", username)
+    send_success(conn)
+
+    # HANDLING OTHER USER"S (DATA'S) FRIENDS LISTS
+    if data not in friends.keys():
+        print("handle_accept_friend_request func ERROR: other user was not in friends db")
+        return
+
+    # removing username from "data"'s sent list
+    sent_reqs_str = friends[data]["sent_requests"]
+    sent_reqs_lst = sent_reqs_str.split("#")
+    try:
+        sent_reqs_lst.remove(username)
+    except ValueError:
+        print("handle_accept_friend_request func ERROR: other user didnt have username in sent_requests")
+    else:
+        sent_reqs_str = ""
+        for req in sent_reqs_lst:
+            sent_reqs_str += req + "#"
+        sent_reqs_str = sent_reqs_str[:-1]
+        friends[data]["sent_requests"] = sent_reqs_str
+        update_database("friends", data)
+
+
+def handle_invite_to_play(conn, data):
+    pass
+
+
+def handle_accept_invitation(conn, data):
+    pass
+
+
+def handle_reject_invitation(conn, data):
+    pass
 
 
 # GAME OPERATOR
@@ -541,7 +1014,7 @@ def main():
                     handle_client_message(current_socket, cmd, msg)
 
                 else:
-                    handle_logout_message(current_socket)
+                    handle_logout(current_socket)
 
         send_waiting_messages(messages_to_send, wlist)
 

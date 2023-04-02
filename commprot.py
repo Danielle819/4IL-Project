@@ -13,6 +13,7 @@ DATA_FIELD = MAX_DATA_LENGTH * ' '
 # Protocol Messages 
 # In this dictionary we will have all the client and server command names
 CLIENT_CMD = {
+    "my_address_msg": "MY_ADDRESS",  # ipadress#port
     "signup_msg": "SIGNUP",  # username#password
     "login_msg": "LOGIN",  # username#password
     "logout_msg": "LOGOUT",  # ''
@@ -26,6 +27,7 @@ CLIENT_CMD = {
     "choose_cell_msg": "CHOOSE_CELL",  # row#column
     "my_score_msg": "MY_SCORE",  # ''
     "topten_msg": "TOPTEN",  # ''
+    "logged_users_msg": "LOGGED_USERS",  # ''
     "my_friends_msg": "MY_FRIENDS",  # ''
     "my_p_requests_msg": "MY_P_REQUESTS",  # ''
     "my_s_requests_msg": "MY_S_REQUESTS",  # ''
@@ -35,6 +37,7 @@ CLIENT_CMD = {
     "accept_friend_request_msg": "ACPT_FRIEND_REQUEST",  # username
     "reject_friend_request_msg": "RJCT_FRIEND_REQUEST",  # username
     "invite_to_play_msg": "INVITE_TO_PLAY",  # username
+    "invitation_received_msg": "INVITATION_RECEIVED",  # ''
     "accept_invitation_msg": "ACPT_INVITATION",  # username
     "reject_invitation_msg": "RJCT_INVITATION"  # username
 }
@@ -49,16 +52,24 @@ SERVER_CMD = {
     "your_score_msg": "YOUR_SCORE",  # score
     "topten_part_msg": "TOPTEN_PART",  # user1:score1#user2:score2#...
     "topten_fin_msg": "TOPTEN_FIN",  # user9:score9#user10:score10#...
+    "logged_users_part_msg": "LOGGED_USERS_PART",  # user1#user2:#...
+    "logged_users_fin_msg": "LOGGED_USERS_FIN",  # user9#user10#...
     "your_friends_part_msg": "YOUR_FRIENDS_PART",  # user1#user2...
     "your_friends_fin_msg": "YOUR_FRIENDS_FIN",  # user1#user2...
     "your_p_requests_part_msg": "YOUR_P_REQUESTS_PART",  # user1#user2...
     "your_p_requests_fin_msg": "YOUR_P_REQUESTS_FIN",  # user1#user2...
     "your_s_requests_part_msg": "YOUR_S_REQUESTS_PART",  # user1#user2...
     "your_s_requests_fin_msg": "YOUR_S_REQUESTS_FIN",  # user1#user2...
+    "playing_invitation_msg": "PLAYING_INVITATION",  # inviting username
+    "remove_invitation_msg": "REMOVE_INVITATION",  # inviting username
+    "invitation_accepted_msg": "INVITATION_ACCEPTED",  # ''
+    "invitation_rejected_msg": "INVITATION_REJECTED",  # ''
+    "invit_rejected_msg": "INVITATION_REJECTED",  # ''
     "error_msg": "ERROR"  # the error
 }
 
 DATA_MESSAGES = {
+    "address_not_received": "The address of your listening socket was not received",
     "user_logged_in": "User is already logged in",
     "user_not_connected": "User was not connected",
     "unrecognized_command": "Unrecognized command",
@@ -79,14 +90,18 @@ DATA_MESSAGES = {
     "no_open_rooms": "There are no open rooms available. Try again later",
     "your_username": "The username you submitted is yours",
     "friend_not_found": "The friend you tried to remove was not in your friends list",
-    "user_not_found": "The user you tried to send a request to was not found",
+    "user_not_found": "The user you submitted was not found",
     "user_in_sent_requests": "You already sent a friend request to this user",
     "user_in_pend_requests": "This user has sent you a friend request already. Accept it!",
     "user_in_your_friends": "The user you tried to send a request to is already in your friends list",
     "user_not_sent": "The friend request you tried to remove does not exist",
     "user_not_pending": "The user whose request you tried to accept was not in your pending requests list",
     "user_not_currently_connected": "The user you tried to invite to play is not connected currently. Try again later",
-    "user_is_playing": "The user you tried to invite to play is currently playing. Tru again later",
+    "user_is_playing": "The user you tried to invite to play is currently playing. Try again later",
+    "invitation_exist": "The invitation already exists. Check if the other player had sent you one already",
+    "invitation_not_sent": "The invitation you sent was not able to get to the other user",
+    "invited_disconnected": "The user you sent the invitation to has already disconnected",
+    "invitation_not_found": "The invitation was not found",
     '': ''
 }
 
@@ -113,7 +128,7 @@ def build_message(cmd, data):
     return full_msg
 
 
-def parse_message(data):
+def parse_message(data, reg=True):
     """
     Parses protocol message and returns command name and data field
     Returns: cmd (str), data (str). If some error occurred, returns None, None
@@ -121,6 +136,7 @@ def parse_message(data):
 
     if data == "" or "|" not in data:
         print("-----parse_message - there is no data or there is no | in data")
+        print(reg)
         return None, None
 
     expected_fields = 3
@@ -145,7 +161,7 @@ def parse_message(data):
     padded_msg = splt_msg[2]
     msg = ""
     for char in padded_msg:
-        if char.isalnum() or char == '_' or char == "#" or char == "," or char == ":":
+        if char.isalnum() or char == '_' or char == "#" or char == "," or char == ":" or char == ".":
             msg += char
 
     padded_length = splt_msg[1]

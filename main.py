@@ -142,5 +142,7 @@ if __name__ == '__main__':
         strs += ""
     print("strs", strs)
 
+    print(len("INVITATION_ACCEPTED"))
+
 
 

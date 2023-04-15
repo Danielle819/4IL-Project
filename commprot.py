@@ -23,7 +23,7 @@ CLIENT_CMD = {
     "create_open_room_msg": "CREATE_OPEN_ROOM",  # ''
     "join_id_room_msg": "JOIN_ID_ROOM",  # ID
     "join_open_room_msg": "JOIN_OPEN_ROOM",  # ''
-    "exit_room_msg": "EXIT_ROOM",  #
+    "exit_room_msg": "EXIT_ROOM",  # '' or ID or open or invitation
     "choose_cell_msg": "CHOOSE_CELL",  # row#column
     "my_score_msg": "MY_SCORE",  # ''
     "topten_msg": "TOPTEN",  # ''
@@ -38,14 +38,17 @@ CLIENT_CMD = {
     "reject_friend_request_msg": "RJCT_FRIEND_REQUEST",  # username
     "invite_to_play_msg": "INVITE_TO_PLAY",  # username
     "invitation_received_msg": "INVITATION_RECEIVED",  # ''
-    "accept_invitation_msg": "ACPT_INVITATION",  # username
-    "reject_invitation_msg": "RJCT_INVITATION"  # username
+    "accept_invitation_msg": "ACCEPT_INVITATION",  # username
+    "reject_invitation_msg": "REJECT_INVITATION",  # username
+    "remove_invitation_msg": "REMOVE_INVITATION",  # inviting username
 }
 
 SERVER_CMD = {
     "success_msg": "SUCCESS",  # '' or ID
     "status_msg": "STATUS",  # your_turn/not_your_turn
     "updated_board_msg": "UPDATED_BOARD",  # the updated game board
+    "other_player_msg": "OTHER_PLAYER",  # other player's username
+    "other_cell_msg": "OTHER_CELL",  # other player's choice
     "game_over_msg": "GAME_OVER",  # you_exited\other_player_exited
     "game_score_msg": "GAME_SCORE",  # score
     "game_result_msg": "GAME_RESULT",  # 'you_won\you_lost\game_over'
@@ -64,7 +67,7 @@ SERVER_CMD = {
     "remove_invitation_msg": "REMOVE_INVITATION",  # inviting username
     "invitation_accepted_msg": "INVITATION_ACCEPTED",  # ''
     "invitation_rejected_msg": "INVITATION_REJECTED",  # ''
-    "invit_rejected_msg": "INVITATION_REJECTED",  # ''
+    "invitation_removed_msg": "INVITATION_REMOVED",  # ''
     "error_msg": "ERROR"  # the error
 }
 
@@ -82,6 +85,7 @@ DATA_MESSAGES = {
     "its_current_password": "That is your current password",
     "other_player_disconnected": "Other player disconnected",
     "id_not_found": "ID was not found",
+    "exited_room": "You have exited the room successfully",
     "you_won": "You won! Well done!",
     "you_lost": "You lost. Good luck next time!",
     "game_over": "Game over",
@@ -102,7 +106,8 @@ DATA_MESSAGES = {
     "invitation_not_sent": "The invitation you sent was not able to get to the other user",
     "invited_disconnected": "The user you sent the invitation to has already disconnected",
     "invitation_not_found": "The invitation was not found",
-    '': ''
+    '': '',
+    None: None
 }
 
 
@@ -136,7 +141,6 @@ def parse_message(data, reg=True):
 
     if data == "" or "|" not in data:
         print("-----parse_message - there is no data or there is no | in data")
-        print(reg)
         return None, None
 
     expected_fields = 3
@@ -155,7 +159,6 @@ def parse_message(data, reg=True):
             cmd += char
 
     if cmd not in CLIENT_CMD.values() and cmd not in SERVER_CMD.values():
-        # print("-----parse_message - command is not in CLIENT_CMD or in SERVER_CMD")
         return None, None
 
     padded_msg = splt_msg[2]
@@ -168,13 +171,9 @@ def parse_message(data, reg=True):
     try:
         length = int(padded_length)
     except ValueError:
-        # print("-----parse_message - length is not int")
         return None, None
 
     if length != len(msg):
-        # print("-----parse_message - length is not message's length")
-        # print("length:", length)
-        # print("message:", msg, "message len:", len(msg))
         return None, None
 
     return cmd, msg
@@ -232,26 +231,6 @@ def string_to_board(string):
             board[row, col] = lst_board[row][col]
 
     return board
-
-
-def load_users_database():
-    users = {}
-    with open("users.txt", "r") as f:
-        data = f.read().split("\n")[:-1]
-        for line in data:
-            username, password, score = line.split("|")
-            users[username] = {"password": password, "score": int(score)}
-    return users
-
-
-def update_users_database(users):
-    # updates from: handle_signup, update_players_score
-    s_users = ""
-    for username, user in zip(users.keys(), users.values()):
-        s_users += username + "|" + user["password"] + "|" + str(user["score"]) + "\n"
-
-    with open("users.txt", "w") as f:
-        f.write(s_users)
 
 
 def read_database(tb):

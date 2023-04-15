@@ -3,6 +3,7 @@ import sqlite3
 # import server
 import commprot
 
+cell_map = {}
 
 def board_to_string(board):
     string = ""
@@ -75,6 +76,15 @@ def update_database(tb, db_dict, new_user=False):
     db_conn.close()
 
 
+def set_cell_map():
+    x = 190
+    for col in range(7):
+        y = 80
+        for row in range(6):
+            cell_map[str(col) + str(row)] = {"X": x, "Y": y}
+            y += 80
+        x += 90
+
 if __name__ == '__main__':
     # conn = None
     # try:
@@ -142,7 +152,21 @@ if __name__ == '__main__':
         strs += ""
     print("strs", strs)
 
-    print(len("INVITATION_ACCEPTED"))
+    print(len("OTHER_PLAYER_USERNAME"))
+
+    topten = "user4:user2#user3:user4#user2:user3#user4:user2#user3:user4"
+    users = topten.split("#")
+    scores = []
+    for user in users:
+        scores.append(user.split(":"))
+    print(scores)
+
+    set_cell_map()
+    print(cell_map)
+
+
+
+
 
 
 

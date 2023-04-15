@@ -44,8 +44,8 @@ class Board:
 #         print("winner:", 1)
 
 
-def get_place(board):
-    col = get_col()
+def get_place(board, col):
+    # col = get_col()
     if col == "E":
         return "E"
 

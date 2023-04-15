@@ -1,5 +1,0 @@
-user1|user1|125
-user2|user2|75
-user3|user3|0
-user4|user4|0
-user5|user5|0

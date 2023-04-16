@@ -291,22 +291,15 @@ def update_database(tb, db_dict, user, new_user=False, un_cng=False):
             sql = f''' UPDATE Users SET password = '{db_dict[user]["password"]}', score = {db_dict[user]["score"]} 
                         WHERE username = '{user}' '''
             cur.execute(sql)
-        # for username, user in zip(db_dict.keys(), db_dict.values()):
-        #     if new_user:
-        #         sql = f'''SELECT * FROM Users WHERE username = '{username}' '''
-        #         cur.execute(sql)
-        #         result = cur.fetchone()
-        #         if result is None:
-        #             sql = f'''INSERT INTO Users VALUES ('{username}', '{user["password"]}', {user["score"]})'''
-        #             cur.execute(sql)
-        #     else:
-        #         sql = f''' UPDATE Users SET password = '{user["password"]}', score = {user["score"]}
-        #         WHERE username = '{username}' '''
-        #         cur.execute(sql)
+
     elif tb == "friends":
         if new_user:
             sql = f''' INSERT INTO Friends VALUES ('{user}', '{db_dict[user]["friends"]}', 
                         '{db_dict[user]["pending_requests"]}', '{db_dict[user]["sent_requests"]}') '''
+            cur.execute(sql)
+        elif un_cng:
+            pre_un, new_un = user
+            sql = f''' UPDATE Friends SET username = '{new_un}' WHERE username = '{pre_un}' '''
             cur.execute(sql)
         else:
             sql = f''' UPDATE Friends SET friends = '{db_dict[user]["friends"]}', 

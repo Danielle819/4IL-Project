@@ -428,39 +428,46 @@ def handle_signup(conn, data):
     send_success(conn)
 
 
-def handle_change_username(conn, data):
-    global users, logged_users, user_sockets
-
-    try:
-        old_username = logged_users[conn.getpeername()]
-    except KeyError:
-        print("handle_change_username func - client was not logged")
-        handle_logout(conn)
-        return
-    new_username = data
-
-    if new_username == old_username:
-        send_error(conn, "its_current_username")
-        return
-    if new_username in users.keys():
-        send_error(conn, "username_taken")
-        return
-    if len(new_username) < 6 or len(new_username) > 20 or not new_username.isalnum():
-        send_error(conn, "username_restrictions")
-        return
-
-    users[new_username] = users[old_username]
-    users.pop(old_username)
-    update_database("users", user=(old_username, new_username), un_cng=True)
-    logged_users[conn.getpeername()] = new_username
-    try:
-        user_socket = user_sockets[old_username]
-    except KeyError:
-        print("handle_change_username func - old username was not in user_sockets")
-    else:
-        user_sockets.pop(old_username)
-        user_sockets[new_username] = user_socket
-    send_success(conn)
+# def handle_change_username(conn, data):
+#     global users, logged_users, user_sockets
+#
+#     try:
+#         old_username = logged_users[conn.getpeername()]
+#     except KeyError:
+#         print("handle_change_username func - client was not logged")
+#         handle_logout(conn)
+#         return
+#     new_username = data
+#
+#     if new_username == old_username:
+#         send_error(conn, "its_current_username")
+#         return
+#     if new_username in users.keys():
+#         send_error(conn, "username_taken")
+#         return
+#     if len(new_username) < 6 or len(new_username) > 20 or not new_username.isalnum():
+#         send_error(conn, "username_restrictions")
+#         return
+#
+#     users[new_username] = users[old_username]
+#     users.pop(old_username)
+#     update_database("users", user=(old_username, new_username), un_cng=True)
+#
+#     friends[new_username] = friends[old_username]
+#     friends.pop(old_username)
+#     update_database("friends", user=(old_username, new_username), un_cng=True)
+#     # updating friend's
+#     user_friends = friends[new_username]["friends"].split("#")
+#
+#     logged_users[conn.getpeername()] = new_username
+#     try:
+#         user_socket = user_sockets[old_username]
+#     except KeyError:
+#         print("handle_change_username func - old username was not in user_sockets")
+#     else:
+#         user_sockets.pop(old_username)
+#         user_sockets[new_username] = user_socket
+#     send_success(conn)
 
 
 def handle_change_password(conn, data):
@@ -1368,7 +1375,8 @@ def main():
 
 
 if __name__ == '__main__':
-    IP = '192.168.1.113'
+    # IP = '192.168.1.113'
+    IP = '192.168.11.147'
     # IP = '127.0.0.1'
     PORT = 1984
     server_socket = socket.socket()

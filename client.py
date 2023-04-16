@@ -16,7 +16,8 @@ from threading import *
 # from colorama import Fore, Style
 
 # SOCKETS SETUP
-IP = '192.168.1.113'
+# IP = '192.168.1.113'
+IP = '192.168.11.147'
 PORT = 1984
 client_socket = socket.socket()
 client_socket.connect((IP, PORT))
@@ -413,15 +414,17 @@ class EditUserScreen(QDialog):
         # COMPLETING APPEARANCE
         self.usernamelabel.setText("username: " + client_username)
         self.passwordlabel.setText("password: " + client_password)
+        self.editusernamebutton.hide()
         # HIDING UNNECESSARY WIDGETS
         self.hide_editors()
         self.username_hidden = True
         self.password_hidden = True
         # DEFINING BUTTONS
-        self.editusernamebutton.clicked.connect(self.show_hide_edit_username)
+        # self.editusernamebutton.clicked.connect(self.show_hide_edit_username)
+
         self.editpasswordbutton.clicked.connect(self.show_hide_edit_password)
         self.gobackbutton.clicked.connect(self.goback)
-        self.usernamesavebutton.clicked.connect(lambda: self.change_info("username"))
+        # self.usernamesavebutton.clicked.connect(lambda: self.change_info("username"))
         self.passwordsavebutton.clicked.connect(lambda: self.change_info("password"))
 
     def hide_editors(self):

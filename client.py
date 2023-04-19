@@ -16,8 +16,7 @@ from threading import *
 # from colorama import Fore, Style
 
 # SOCKETS SETUP
-# IP = '192.168.1.113'
-IP = '192.168.11.147'
+IP = '192.168.1.113'
 PORT = 1984
 client_socket = socket.socket()
 client_socket.connect((IP, PORT))
@@ -289,7 +288,10 @@ class LoginScreen(QDialog):
         self.receiver.moveToThread(self.receiver_thread)
         self.receiver_thread.started.connect(self.receiver.run)  # when the thread starts - run receiver
         # connecting signals to appropriate handling functions
-        self.receiver.update_invitations.connect(self.invitation_received)
+        self.receiver.topten_updated.connect(self.update_topten)
+        self.receiver.friends_updated.connect(self.update_friends)
+        self.receiver.invitation_received.connect(self.invitation_received)
+        self.receiver.invitation_removed.connect(self.invitation_removed)
         # handling finished
         self.receiver.finished.connect(self.receiver_thread.quit)
         self.receiver.finished.connect(self.receiver.deleteLater)
@@ -297,6 +299,15 @@ class LoginScreen(QDialog):
         # starting thread
         listen = True
         self.receiver_thread.start()
+
+    # UPDATES HANDLING FUNCS
+    def update_topten(self):
+        topten_screen.set_topten_table()
+
+    def update_friends(self):
+        friends_menu.set_friends_table()
+        friends_menu.set_pending_table()
+        friends_menu.set_sent_table()
 
     def invitation_received(self, inv):
         invitations_menu.set_invitations_table()
@@ -310,6 +321,9 @@ class LoginScreen(QDialog):
                           "font: 12pt 'Century Gothic'; background-color: rgb(222, 191, 181);}"
                           "QLabel{color: rgb(100, 83, 82);}")
         ret = msg.exec_()
+
+    def invitation_removed(self):
+        invitations_menu.set_invitations_table()
 
 
 class SignupScreen(QDialog):
@@ -341,7 +355,7 @@ class SignupScreen(QDialog):
             self.messagelabel.setText("You have signed up successfully. Now log in")
             print("You signed up successfully!")
         else:
-            print("login func:", response, _)
+            print("signup func:", response, _)
 
 
 class MainMenu(QDialog):
@@ -367,39 +381,15 @@ class MainMenu(QDialog):
             self.scorelabel.setText("SCORE: " + str(client_score))
 
     def edituser(self):
-        global edit_user_screen
-        if widget.count() >= 5:
-            widget.setCurrentIndex(4)
-            widget.removeWidget(widget.currentWidget())
-        edit_user_screen = EditUserScreen()
-        widget.insertWidget(4, edit_user_screen)
         widget.setCurrentIndex(4)
 
     def playmenu(self):
-        global play_menu
-        if widget.count() >= 8:
-            widget.setCurrentIndex(7)
-            widget.removeWidget(widget.currentWidget())
-        play_menu = PlayMenu()
-        widget.insertWidget(7, play_menu)
         widget.setCurrentIndex(7)
 
     def topten(self):
-        global topten_screen
-        if widget.count() >= 6:
-            widget.setCurrentIndex(5)
-            widget.removeWidget(widget.currentWidget())
-        topten_screen = TopTenScreen()
-        widget.insertWidget(5, topten_screen)
         widget.setCurrentIndex(5)
     
     def friendsmenu(self):
-        global friends_menu
-        if widget.count() >= 7:
-            widget.setCurrentIndex(6)
-            widget.removeWidget(widget.currentWidget())
-        friends_menu = FriendsMenu()
-        widget.insertWidget(6, friends_menu)
         widget.setCurrentIndex(6)
 
     def logout(self):
@@ -421,11 +411,10 @@ class EditUserScreen(QDialog):
         self.password_hidden = True
         # DEFINING BUTTONS
         # self.editusernamebutton.clicked.connect(self.show_hide_edit_username)
-
         self.editpasswordbutton.clicked.connect(self.show_hide_edit_password)
-        self.gobackbutton.clicked.connect(self.goback)
         # self.usernamesavebutton.clicked.connect(lambda: self.change_info("username"))
         self.passwordsavebutton.clicked.connect(lambda: self.change_info("password"))
+        self.gobackbutton.clicked.connect(self.goback)
 
     def hide_editors(self):
         self.usernameminilabel.hide()
@@ -510,12 +499,6 @@ class EditUserScreen(QDialog):
             print("change_username func:", response, _)
 
     def goback(self):
-        global main_menu
-        if widget.count() >= 4:
-            widget.setCurrentIndex(3)
-            widget.removeWidget(widget.currentWidget())
-        main_menu = MainMenu()
-        widget.insertWidget(3, main_menu)
         widget.setCurrentIndex(3)
 
 
@@ -564,6 +547,8 @@ class FriendsMenu(QDialog):
         self.friends_lst = []
         self.pending_lst = []
         self.sent_lst = []
+        self.searchbar_hidden = False
+        self.searched = False
         # COMPLETING APPEARANCE
         self.editfriendstable.hide()
         self.savefriendseditbutton.hide()
@@ -575,12 +560,15 @@ class FriendsMenu(QDialog):
         self.messagelabel.hide()
         self.usernamelabel.setText(client_username)
         self.set_score()
+        self.show_hide_searchbar()
         self.set_friends_table()
         self.set_pending_table()
         self.set_sent_table()
         # DEFINING BUTTONS
         self.editfriendsbutton.clicked.connect(self.show_edit_friends_table)
         self.savefriendseditbutton.clicked.connect(self.save_edit_friends)
+        self.searchfriendsbutton.clicked.connect(self.show_hide_searchbar)
+        self.startsearchbutton.clicked.connect(self.search_friends)
         self.editsentbutton.clicked.connect(self.show_edit_sent_table)
         self.savesenteditbutton.clicked.connect(self.save_edit_sent)
         self.sendarequestbutton.clicked.connect(self.show_send_friend_request)
@@ -588,6 +576,7 @@ class FriendsMenu(QDialog):
         self.closebutton.clicked.connect(self.close_send_friend_request)
         self.gobackbutton.clicked.connect(self.goback)
 
+    # APPEARANCE FUNCTIONS
     def set_score(self):
         global client_score
         if client_score is None:
@@ -595,42 +584,37 @@ class FriendsMenu(QDialog):
         else:
             self.scorelabel.setText("SCORE: " + str(client_score))
 
-    def remove_friend_popup(self):
-        msg = QMessageBox()
-        msg.setWindowTitle("")
-        msg.setText("Are you sure?")
-        msg.setIcon(QMessageBox.Question)
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        msg.setDefaultButton(QMessageBox.No)
-        msg.setStyleSheet("QMessageBox{background-color: rgb(230, 224, 207); font: 12pt 'Century Gothic';} "
-                          "QPushButton{border-radius:5px; width: 40; color: rgb(255, 255, 255); "
-                          "font: 12pt 'Century Gothic'; background-color: rgb(222, 191, 181);}"
-                          "QLabel{color: rgb(100, 83, 82);}")
-        ret = msg.exec_()
-        if ret == QMessageBox.Yes:
-            self.remove_friend(self.sender().objectName())
+    def set_friends_table(self, f_lst=None):
+        if f_lst is None:
+            self.friends_lst = my_friends()
+            friends_lst = self.friends_lst
+        else:
+            friends_lst = f_lst
+        # friends table
+        self.friendstable.setRowCount(len(friends_lst))
+        self.friendstable.setColumnCount(2)
+        self.friendstable.setColumnWidth(0, 196)
+        self.friendstable.setColumnWidth(1, 20)
 
-    def set_friends_table(self):
-        self.friends_lst = my_friends()
-        self.friendstable.setRowCount(len(self.friends_lst))
-        self.friendstable.setColumnCount(1)
-        self.friendstable.setColumnWidth(0, 240)
-
-        row = 0
-        for friend in self.friends_lst:
-            friend_item = QtWidgets.QTableWidgetItem(friend)
-            self.friendstable.setItem(row, 0, friend_item)
-            row += 1
-
-    def show_edit_friends_table(self):
-        self.friends_lst = my_friends()
-        self.editfriendstable.setRowCount(len(self.friends_lst))
+        # edit friends table
+        self.editfriendstable.setRowCount(len(friends_lst))
         self.editfriendstable.setColumnCount(2)
         self.editfriendstable.setColumnWidth(0, 196)
         self.editfriendstable.setColumnWidth(1, 20)
+
+        self.edit_friends_buttons, self.invite_friend_buttons = [], []
         row = 0
-        self.edit_friends_buttons = []
-        for friend in self.friends_lst:
+        for friend in friends_lst:
+            # friends table
+            friend_item = QtWidgets.QTableWidgetItem(friend)
+            self.friendstable.setItem(row, 0, friend_item)
+            self.invite_friend_buttons.append(QtWidgets.QPushButton(self))
+            self.invite_friend_buttons[row].setObjectName(f"invite{row}button")
+            self.invite_friend_buttons[row].setGeometry(0, 0, 20, 20)
+            self.invite_friend_buttons[row].setIcon(QIcon('pictures\\send2.png'))
+            self.invite_friend_buttons[row].clicked.connect(self.invite_friend_to_play)
+            self.friendstable.setCellWidget(row, 1, self.invite_friend_buttons[row])            # edit friends table
+            # edit friends table
             friend_item = QtWidgets.QTableWidgetItem(friend)
             self.editfriendstable.setItem(row, 0, friend_item)
             self.edit_friends_buttons.append(QtWidgets.QPushButton(self))
@@ -639,11 +623,29 @@ class FriendsMenu(QDialog):
             self.edit_friends_buttons[row].setIcon(QIcon('pictures\\X.png'))
             self.edit_friends_buttons[row].clicked.connect(self.remove_friend_popup)
             self.editfriendstable.setCellWidget(row, 1, self.edit_friends_buttons[row])
+
             row += 1
+
+    def show_edit_friends_table(self):
         self.friendstable.hide()
         self.editfriendsbutton.hide()
         self.editfriendstable.show()
         self.savefriendseditbutton.show()
+
+    def show_hide_searchbar(self):
+        if self.searchbar_hidden:
+            self.searchbar.show()
+            self.startsearchbutton.show()
+            self.searchbar_hidden = False
+        else:
+            self.searchbar.hide()
+            self.searchbar.setText("")
+            self.startsearchbutton.hide()
+            self.friendnotfoundlabel.hide()
+            self.searchbar_hidden = True
+            if self.searched:
+                self.set_friends_table()
+            self.searched = False
 
     def set_pending_table(self):
         self.pending_lst = my_pending_requests()
@@ -677,25 +679,23 @@ class FriendsMenu(QDialog):
 
     def set_sent_table(self):
         self.sent_lst = my_sent_requests()
+        # sets table
         self.sentrequeststable.setRowCount(len(self.sent_lst))
         self.sentrequeststable.setColumnCount(1)
         self.sentrequeststable.setColumnWidth(0, 240)
-
-        row = 0
-        for req in self.sent_lst:
-            req_item = QtWidgets.QTableWidgetItem(req)
-            self.sentrequeststable.setItem(row, 0, req_item)
-            row += 1
-
-    def show_edit_sent_table(self):
-        self.sent_lst = my_sent_requests()
+        # edit sents table
         self.editsenttable.setRowCount(len(self.sent_lst))
         self.editsenttable.setColumnCount(2)
         self.editsenttable.setColumnWidth(0, 196)
         self.editsenttable.setColumnWidth(1, 20)
-        row = 0
+
         self.edit_sent_buttons = []
+        row = 0
         for req in self.sent_lst:
+            # sets table
+            req_item = QtWidgets.QTableWidgetItem(req)
+            self.sentrequeststable.setItem(row, 0, req_item)
+            # edit sents table
             req_item = QtWidgets.QTableWidgetItem(req)
             self.editsenttable.setItem(row, 0, req_item)
             self.edit_sent_buttons.append(QtWidgets.QPushButton(self))
@@ -704,7 +704,10 @@ class FriendsMenu(QDialog):
             self.edit_sent_buttons[row].setIcon(QIcon('pictures\\X.png'))
             self.edit_sent_buttons[row].clicked.connect(self.remove_friend_request)
             self.editsenttable.setCellWidget(row, 1, self.edit_sent_buttons[row])
+
             row += 1
+
+    def show_edit_sent_table(self):
         self.sentrequeststable.hide()
         self.editsentbutton.hide()
         self.editsenttable.show()
@@ -722,10 +725,49 @@ class FriendsMenu(QDialog):
         self.editsenttable.hide()
         self.savesenteditbutton.hide()
 
+    def show_send_friend_request(self):
+        self.sendarequestbutton.move(170, 510)
+        self.usernamefield.show()
+        self.sendbutton.show()
+        self.closebutton.show()
+        self.messagelabel.show()
+        self.messagelabel.setText("")
+
+    def close_send_friend_request(self):
+        self.sendarequestbutton.move(400, 510)
+        self.usernamefield.hide()
+        self.usernamefield.setText("")
+        self.sendbutton.hide()
+        self.closebutton.hide()
+        self.messagelabel.hide()
+        self.messagelabel.setText("")
+
+    # USER COMMANDS FUNCTIONS
+    def invite_friend_to_play(self):
+        button_name = self.sender().objectName()
+        row = int(button_name[6:-6])
+        friend = self.friends_lst[row]
+        widget.setCurrentIndex(8)
+        invitations_menu.show_invite_to_play(friend)
+
+    def remove_friend_popup(self):
+        msg = QMessageBox()
+        msg.setWindowTitle("")
+        msg.setText("Are you sure?")
+        msg.setIcon(QMessageBox.Question)
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.No)
+        msg.setStyleSheet("QMessageBox{background-color: rgb(230, 224, 207); font: 12pt 'Century Gothic';} "
+                          "QPushButton{border-radius:5px; width: 40; color: rgb(255, 255, 255); "
+                          "font: 12pt 'Century Gothic'; background-color: rgb(222, 191, 181);}"
+                          "QLabel{color: rgb(100, 83, 82);}")
+        ret = msg.exec_()
+        if ret == QMessageBox.Yes:
+            self.remove_friend(self.sender().objectName())
+
     def remove_friend(self, button_name):
         if len(self.friends_lst) == 0:
             return
-        # button_name = self.sender().objectName()
         row = int(button_name[12:-6])
         friend = self.friends_lst[row]
         response, _ = build_send_recv_parse(commprot.CLIENT_CMD["remove_friend_msg"], friend)
@@ -735,6 +777,18 @@ class FriendsMenu(QDialog):
             print("Friend was removed successfully")
         else:
             print(commprot.DATA_MESSAGES[_])
+
+    def search_friends(self):
+        txt = self.searchbar.text()
+        f_lst = []
+        for friend in self.friends_lst:
+            if txt in friend:
+                f_lst.append(friend)
+        if len(f_lst) == 0:
+            self.friendnotfoundlabel.show()
+        else:
+            self.searched = True
+            self.set_friends_table(f_lst)
 
     def accept_friend_request(self):
         if len(self.pending_lst) == 0:
@@ -777,14 +831,6 @@ class FriendsMenu(QDialog):
         else:
             print(commprot.DATA_MESSAGES[_])
 
-    def show_send_friend_request(self):
-        self.sendarequestbutton.move(170, 510)
-        self.usernamefield.show()
-        self.sendbutton.show()
-        self.closebutton.show()
-        self.messagelabel.show()
-        self.messagelabel.setText("")
-
     def send_friend_request(self):
         username = self.usernamefield.text()
         response, _ = build_send_recv_parse(commprot.CLIENT_CMD["send_friend_request_msg"], username)
@@ -796,15 +842,6 @@ class FriendsMenu(QDialog):
         else:
             self.messagelabel.setText(commprot.DATA_MESSAGES[_])
             self.messagelabel.adjustSize()
-
-    def close_send_friend_request(self):
-        self.sendarequestbutton.move(400, 510)
-        self.usernamefield.hide()
-        self.usernamefield.setText("")
-        self.sendbutton.hide()
-        self.closebutton.hide()
-        self.messagelabel.hide()
-        self.messagelabel.setText("")
 
     def goback(self):
         widget.setCurrentIndex(3)
@@ -958,7 +995,7 @@ class InvitationsMenu(QDialog):
         self.buttons1, self.buttons2 = [], []
         self.invitation_removed = False
         # DEFINING BUTTONS
-        self.invitetoplaybutton.clicked.connect(self.show_invite_to_play)
+        self.invitetoplaybutton.clicked.connect(lambda: self.show_invite_to_play(friend=""))
         self.sendbutton.clicked.connect(self.invite_to_play)
         self.closebutton.clicked.connect(self.hide_invite_to_play)
         self.gobackbutton.clicked.connect(self.goback)
@@ -972,7 +1009,6 @@ class InvitationsMenu(QDialog):
             self.scorelabel.setText("SCORE: " + str(client_score))
 
     def set_invitations_table(self):
-        print("entered set_invitations_table")
         global invitations, edit_invitations_list
         edit_invitations_list.acquire()
         self.invitationstable.setRowCount(len(invitations))
@@ -1016,13 +1052,17 @@ class InvitationsMenu(QDialog):
         self.statuslabel.setText("")
         self.detailslabel.setText("")
 
-    def show_invite_to_play(self):
+    def show_invite_to_play(self, friend=""):
         self.usernamefield.show()
         self.sendbutton.show()
         self.closebutton.show()
         self.statuslabel.show()
         self.detailslabel.show()
         self.errorlabel.show()
+        self.usernamefield.setText("")
+        if friend != "":
+            self.usernamefield.setText(friend)
+            self.statuslabel.setText("Press send to invite friend to play")
 
     def disable_buttons(self):
         for i in range(len(self.buttons1)):
@@ -1076,7 +1116,7 @@ class InvitationsMenu(QDialog):
         friend = self.usernamefield.text()
         response, _ = build_send_recv_parse(commprot.CLIENT_CMD["invite_to_play_msg"], friend)
         if response != commprot.SERVER_CMD["success_msg"]:
-            print("infite_to_play func - error:", commprot.DATA_MESSAGES[_])
+            print("invite_to_play func - error:", commprot.DATA_MESSAGES[_])
             self.errorlabel.setText(commprot.DATA_MESSAGES[_])
             return
 
@@ -1137,7 +1177,7 @@ class InvitationsMenu(QDialog):
             widget.insertWidget(9, gameroom)
             widget.setCurrentIndex(9)
         else:
-            print(commprot.DATA_MESSAGES[_])
+            print("accept_invitation func - error:", commprot.DATA_MESSAGES[_])
             if _ == "invitation_not_found" or _ == "other_player_disconnected":
                 edit_invitations_list.acquire()
                 try:
@@ -1156,7 +1196,6 @@ class InvitationsMenu(QDialog):
         response, _ = build_send_recv_parse(commprot.CLIENT_CMD["reject_invitation_msg"], inv)
         if response != commprot.SERVER_CMD["success_msg"]:
             print(commprot.DATA_MESSAGES[_])
-            return
 
         edit_invitations_list.acquire()
         try:
@@ -1328,6 +1367,7 @@ class GameRoom(QDialog):
             self.added_circles[row][col].setStyleSheet("border-radius:35px;"
                                                        "background-color: rgb("+self.alternate_your_color+");"
                                                        "border: 10px solid  rgb("+self.your_color+");")
+            self.added_circles[row][col].raise_()
             self.added_circles[row][col].show()
             print("finished creating circle, now animation")
             self.animation = QPropertyAnimation(self.added_circles[row][col], b"geometry")
@@ -1505,20 +1545,25 @@ class GameRoom(QDialog):
 
     def goback(self):
         print("enter goback")
-        widget.setCurrentIndex(7)
+
         if self.update_score:
-            global client_score, play_menu
-            client_score = my_score()
-            widget.removeWidget(widget.currentWidget())
-            play_menu = PlayMenu()
-            widget.insertWidget(7, play_menu)
-            widget.setCurrentIndex(7)
+            global main_menu, edit_user_screen, topten_screen, friends_menu, play_menu, invitations_menu
+            main_menu.set_score()
+            topten_screen.set_score()
+            friends_menu.set_score()
+            play_menu.set_score()
+            invitations_menu.set_score()
+
+        widget.setCurrentIndex(7)
 
 
 # QTHREADS WORKERS
 
 class UpdatesReceiver(QObject):
-    update_invitations = pyqtSignal(str, name="update_invitations")
+    topten_updated = pyqtSignal(name="topten_updated")
+    friends_updated = pyqtSignal(name="friends_updated")
+    invitation_received = pyqtSignal(str, name="invitation_received")
+    invitation_removed = pyqtSignal(name="invitation_removed")
     finished = pyqtSignal(name="finished")
 
     def run(self):
@@ -1533,8 +1578,7 @@ class UpdatesReceiver(QObject):
                     edit_invitations_list.acquire()
                     invitations.append(data)
                     edit_invitations_list.release()
-                    print("\n", data, "has invited you to a game!")
-                    self.update_invitations.emit(data)
+                    self.invitation_received.emit(data)
                 elif cmd == commprot.SERVER_CMD["remove_invitation_msg"]:
                     edit_invitations_list.acquire()
                     try:
@@ -1543,8 +1587,12 @@ class UpdatesReceiver(QObject):
                         print("receive_invitation func - removed invitation was not in invitations")
                     else:
                         print("\n", data, "has removed their playing invitation to you")
-                        self.update_invitations.emit()
+                        self.invitation_removed.emit()
                     edit_invitations_list.release()
+                elif cmd == commprot.SERVER_CMD["topten_updated_msg"]:
+                    self.topten_updated.emit()
+                elif cmd == commprot.SERVER_CMD["friends_updated_msg"]:
+                    self.friends_updated.emit()
                 else:
                     build_and_send_message("", "", sock=server_socket)
 

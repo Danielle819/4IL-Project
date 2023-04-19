@@ -154,7 +154,6 @@ background-color:rgba(0,0,0,0);</string>
 alternate-background-color: rgba(255, 255, 255, 10);
 gridline-color: rgb(230, 224, 207);
 font: 14pt &quot;Century Gothic&quot;;
-color:rgb(230, 224, 207);
 text-align: center;
 color:rgb(222,191,181);
 </string>

@@ -13,12 +13,12 @@ import string
 # GLOBALS
 users = {}  # username: {password: _, score: _}
 friends = {}  # username: {friends: _, pending_requests: _, sent_requests: _}
+topten = []  # (username, score)
 logged_users = {}  # client_socket.getpeername(): username
 user_sockets = {}  # username: socket
-messages_to_send = []  # (socket, message)
+# messages_to_send = []  # (socket, message)
 not_playing_clients = []  # client_socket
 playing_clients = []  # client_socket
-playing_rooms = []  # [client1, client2]
 waiting_id_rooms = {}  # id : (waiting) client_socket
 waiting_open_rooms = []  # (waiting) client_socket
 waiting_invitations = []  # (inviting_username, inviting_socket, invited_username, invited_socket)
@@ -78,17 +78,17 @@ def recv_message_and_parse(conn, settimeout=0):
 
 # OTHER HELPER METHODS
 
-def send_waiting_messages(messages, wlist):
-    for i in range(len(messages)):
-        current_socket, data = messages[0]
-        # print("----send_waiting_messages - before if:", data)
-        if current_socket in wlist:
-            try:
-                current_socket.send(data.encode())
-                print("send_waiting_messages func - SENT:", data)
-                messages.remove(messages[0])
-            except:
-                handle_logout(current_socket)
+# def send_waiting_messages(messages, wlist):
+#     for i in range(len(messages)):
+#         current_socket, data = messages[0]
+#         # print("----send_waiting_messages - before if:", data)
+#         if current_socket in wlist:
+#             try:
+#                 current_socket.send(data.encode())
+#                 print("send_waiting_messages func - SENT:", data)
+#                 messages.remove(messages[0])
+#             except:
+#                 handle_logout(current_socket)
 
 
 def send_success(conn, msg='', direct=False):
@@ -120,6 +120,20 @@ def send_longer_message(conn, cmd, data, direct=False):
     # print("sending final msg")
     build_and_send_message(conn, commprot.SERVER_CMD[cmd + "_fin_msg"], messages[-1], direct)
     # print("done")
+
+
+def set_topten():
+    global users, topten
+    # CREATING TOP TEN LIST
+    topten = []  # a list of the users and their scores - format: (username, score)
+    for username, user in zip(users.keys(), users.values()):
+        topten.append((username, user["score"]))
+    topten.sort(key=lambda x: x[1], reverse=True)  # sorting the list from big to small by the score
+
+    if len(topten) > 10:
+        topten = topten[:10]
+
+    print(topten)
 
 
 def create_id():
@@ -182,8 +196,7 @@ def update_players_score(username, turns):
     updates winner player's score in the users dictionary and in db
     parameters: username - string (not socket), turns - int
     """
-
-    global users
+    global users, topten, user_sockets
 
     winner_turns = (turns + 1) / 2
     if 4 <= winner_turns <= 6:
@@ -195,19 +208,24 @@ def update_players_score(username, turns):
 
     users[username]["score"] += score
     update_database("users", username)
+    if users[username]["score"] > topten[len(topten) - 1][1]:
+        set_topten()
+        for user_socket in user_sockets.values():
+            build_and_send_message(user_socket, commprot.SERVER_CMD["topten_updated_msg"], "")
     return score
 
 
 def update_database(tb, user, new_user=False, un_cng=False):
+    """
+    function creates the thread that actually edits the database
+    """
     updatedb_th = threading.Thread(target=update_database_target, args=[tb, user, new_user, un_cng])
     updatedb_th.start()
     updatedb_th.join()
 
 
 def update_database_target(tb, user, new_user=False, un_cng=False):
-    global users
-    global friends
-    global write_lock
+    global users, friends, write_lock
 
     write_lock.acquire()
     if tb == "users":
@@ -244,8 +262,8 @@ def handle_client_message(conn, cmd, data):
     # print("handle_client_message func - ", cmd)
     if cmd == commprot.CLIENT_CMD["logout_msg"]:
         handle_logout(conn)
-    elif cmd == commprot.CLIENT_CMD["change_username_msg"]:
-        handle_change_username(conn, data)
+    # elif cmd == commprot.CLIENT_CMD["change_username_msg"]:
+    #     handle_change_username(conn, data)
     elif cmd == commprot.CLIENT_CMD["change_password_msg"]:
         handle_change_password(conn, data)
     elif cmd == commprot.CLIENT_CMD["create_id_room_msg"]:
@@ -258,6 +276,15 @@ def handle_client_message(conn, cmd, data):
     elif cmd == commprot.CLIENT_CMD["join_open_room_msg"]:
         th = threading.Thread(target=handle_join_open_room, args=[conn])
         th.start()
+    elif cmd == commprot.CLIENT_CMD["invite_to_play_msg"]:
+        handle_invite_to_play(conn, data)
+    elif cmd == commprot.CLIENT_CMD["accept_invitation_msg"]:
+        th = threading.Thread(target=handle_accept_invitation, args=[conn, data])
+        th.start()
+    elif cmd == commprot.CLIENT_CMD["reject_invitation_msg"]:
+        handle_reject_invitation(conn, data)
+    elif cmd == commprot.CLIENT_CMD["remove_invitation_msg"]:
+        handle_remove_invitation(conn)
     elif cmd == commprot.CLIENT_CMD["exit_room_msg"] and data != "":
         handle_exit_room(conn, data)
     elif cmd == commprot.CLIENT_CMD["my_score_msg"]:
@@ -282,14 +309,7 @@ def handle_client_message(conn, cmd, data):
         handle_accept_friend_request(conn, data)
     elif cmd == commprot.CLIENT_CMD["reject_friend_request_msg"]:
         handle_reject_friend_request(conn, data)
-    elif cmd == commprot.CLIENT_CMD["invite_to_play_msg"]:
-        handle_invite_to_play(conn, data)
-    elif cmd == commprot.CLIENT_CMD["accept_invitation_msg"]:
-        handle_accept_invitation(conn, data)
-    elif cmd == commprot.CLIENT_CMD["reject_invitation_msg"]:
-        handle_reject_invitation(conn, data)
-    elif cmd == commprot.CLIENT_CMD["remove_invitation_msg"]:
-        handle_remove_invitation(conn)
+
     else:
         send_error(conn, "unrecognized_command")
 
@@ -337,7 +357,7 @@ def handle_logout(conn):
     closes connection to client's listening socket and closes client's socket
     """
     global playing_clients, not_playing_clients, waiting_id_rooms, waiting_open_rooms
-    global logged_users, waiting_invitations, user_sockets, client_listens
+    global logged_users, waiting_invitations, user_sockets
     # global messages_to_send
 
     # removing client from the playing lists
@@ -452,13 +472,6 @@ def handle_signup(conn, data):
 #     users[new_username] = users[old_username]
 #     users.pop(old_username)
 #     update_database("users", user=(old_username, new_username), un_cng=True)
-#
-#     friends[new_username] = friends[old_username]
-#     friends.pop(old_username)
-#     update_database("friends", user=(old_username, new_username), un_cng=True)
-#     # updating friend's
-#     user_friends = friends[new_username]["friends"].split("#")
-#
 #     logged_users[conn.getpeername()] = new_username
 #     try:
 #         user_socket = user_sockets[old_username]
@@ -515,7 +528,7 @@ def handle_join_id_room(conn, ID):
     after game ends, moving clients back to the not playing list
     parameters: conn (client socket), ID (string)
     """
-    global waiting_id_rooms, not_playing_clients, playing_clients, logged_users , client_listens
+    global waiting_id_rooms, not_playing_clients, playing_clients, logged_users
 
     if ID not in waiting_id_rooms:
         build_and_send_message(conn, commprot.SERVER_CMD["error_msg"], "id_not_found")
@@ -531,18 +544,19 @@ def handle_join_id_room(conn, ID):
         not_playing_clients.remove(conn)
     except ValueError:
         send_error(other_player, "other_player_disconnected")
+        edit_playing_lists.release()
         return
     try:
         not_playing_clients.remove(other_player)
     except ValueError:
         send_error(conn, "other_player_disconnected")
+        edit_playing_lists.release()
         return
     playing_clients.append(conn)
     playing_clients.append(other_player)
-    players = [other_player, conn]
-    playing_rooms.append(players)
     edit_playing_lists.release()
 
+    players = [other_player, conn]
     play(players)
 
     # moving clients back to the not playing list and removing them from the playing rooms list
@@ -557,10 +571,6 @@ def handle_join_id_room(conn, ID):
         not_playing_clients.append(other_player)
     except ValueError:
         print("handle_join_id_room func - error: other player was not in playing clients")
-    try:
-        playing_rooms.remove(players)
-    except ValueError:
-        print("handle_join_id_room func - error: players were not in playing_rooms")
     edit_playing_lists.release()
 
 
@@ -595,18 +605,19 @@ def handle_join_open_room(conn):
         not_playing_clients.remove(conn)
     except ValueError:
         send_error(other_player, "other_player_disconnected")
+        edit_playing_lists.release()
         return
     try:
         not_playing_clients.remove(other_player)
     except ValueError:
         send_error(conn, "other_player_disconnected")
+        edit_playing_lists.release()
         return
     playing_clients.append(conn)
     playing_clients.append(other_player)
-    players = [other_player, conn]
-    playing_rooms.append(players)
     edit_playing_lists.release()
 
+    players = [other_player, conn]
     play(players)
 
     # moving clients back to the not playing list and removing them from the playing rooms list
@@ -621,11 +632,185 @@ def handle_join_open_room(conn):
         not_playing_clients.append(other_player)
     except ValueError:
         print("handle_join_open_room func - error: other player was not in playing clients")
-    try:
-        playing_rooms.remove(players)
-    except ValueError:
-        print("handle_join_open_room func - error: players were not in playing_rooms")
     edit_playing_lists.release()
+
+
+def handle_invite_to_play(conn, data):
+    global users, logged_users, playing_clients, user_sockets, waiting_invitations
+
+    if data not in users.keys():  # if wanted user does not exist
+        send_error(conn, "user_not_found")
+        return
+    if data not in logged_users.values():  # if wanted user is not connected to server
+        send_error(conn, "user_not_currently_connected")
+        return
+
+    try:
+        username = logged_users[conn.getpeername()]
+    except KeyError:
+        print("handle_invite_to_play func - client was not logged")
+        handle_logout(conn)
+        return
+    if username == data:  # if the user tried to invite themselves
+        send_error(conn, "your_username")
+        return
+
+    # getting wanted user's peername by username
+    edit_logged_users.acquire()
+    p_id = ""
+    for p, u in zip(logged_users.keys(), logged_users.values()):
+        if u == data:
+            p_id = p
+    edit_logged_users.release()
+    # if it's not found:
+    if p_id == "":
+        send_error(conn, "user_not_currently_connected")
+        return
+
+    # find other user's connection in the not_playing list
+    edit_playing_lists.acquire()
+    other_conn = None
+    for sock in not_playing_clients:
+        if sock.getpeername() == p_id:
+            other_conn = sock
+    edit_playing_lists.release()
+    if other_conn is None:  # if not found in this list, user is currently playing
+        send_error(conn, "user_is_playing")
+        return
+
+    # check if other user is in a waiting room already
+    if other_conn in waiting_id_rooms.values() or other_conn in waiting_open_rooms:
+        send_error(conn, "user_is_playing")
+        return
+
+    edit_waiting_invitations.acquire()
+    for wait_inv in waiting_invitations:
+        if username in wait_inv and data in wait_inv:
+            send_error(conn, "invitation_exist")
+            edit_waiting_invitations.release()
+            return
+    edit_waiting_invitations.release()
+
+    try:  # getting the socket to connected to other user's listening socket
+        user_socket = user_sockets[data]
+    except KeyError:
+        print("handle_invite_to_play func - invited client not in user_sockets")
+        send_error(conn, "invitation_not_sent")
+        return
+
+    build_and_send_message(user_socket, commprot.SERVER_CMD["playing_invitation_msg"], username, direct=True)
+    response, _ = recv_message_and_parse(user_socket, settimeout=20)
+    # if invitation was not received properly:
+    if response != commprot.CLIENT_CMD["invitation_received_msg"]:
+        print("handle_invite_to_play func ERROR - invitation didnt reach client. cmd:", response, "msg:", _)
+        send_error(conn, "invitation_not_sent")
+        return
+    edit_waiting_invitations.acquire()
+    waiting_invitations.append((username, conn, data, other_conn))
+    edit_waiting_invitations.release()
+    # if all above went well, send inviting user that invitation was sent
+    send_success(conn)
+
+
+def handle_accept_invitation(conn, data):
+    global waiting_invitations, logged_users, playing_clients, not_playing_clients
+
+    other_conn = None
+    invitation = None
+    edit_waiting_invitations.acquire()
+    for wait_inv in waiting_invitations:
+        if wait_inv[0] == data and wait_inv[3] is conn:
+            invitation = wait_inv
+            other_conn = wait_inv[1]
+    if invitation is None:
+        send_error(conn, "invitation_not_found")
+        edit_waiting_invitations.release()
+        return
+    waiting_invitations.remove(invitation)
+    edit_waiting_invitations.release()
+
+    if data not in logged_users.values():
+        send_error(conn, "other_player_disconnected")
+        return
+
+    send_success(conn, direct=True)
+    build_and_send_message(other_conn, commprot.SERVER_CMD["invitation_accepted_msg"], "", direct=True)
+
+    edit_playing_lists.acquire()
+    try:
+        not_playing_clients.remove(conn)
+    except ValueError:
+        send_error(other_conn, "other_player_disconnected")
+        playing_clients.append(other_conn)
+        return
+    try:
+        not_playing_clients.remove(other_conn)
+    except ValueError:
+        send_error(conn, "other_player_disconnected")
+        playing_clients.append(other_conn)
+        return
+    playing_clients.append(conn)
+    playing_clients.append(other_conn)
+    edit_playing_lists.release()
+
+    players = [other_conn, conn]
+    play(players)
+
+    edit_playing_lists.acquire()
+    try:
+        playing_clients.remove(conn)
+        not_playing_clients.append(conn)
+    except ValueError:
+        print("handle_accept_invitation func - error: conn was not in playing clients")
+    try:
+        playing_clients.remove(other_conn)
+        not_playing_clients.append(other_conn)
+    except ValueError:
+        print("handle_accept_invitation func - error: other player was not in playing clients")
+    edit_playing_lists.release()
+
+
+def handle_reject_invitation(conn, data):
+    global waiting_invitations
+
+    remove_inv = None
+    edit_waiting_invitations.release()
+    for wait_inv in waiting_invitations:
+        if wait_inv[0] == data and wait_inv[3] is conn:
+            remove_inv = wait_inv
+    if remove_inv is None:
+        send_error(conn, "invitation_not_found")
+        return
+    waiting_invitations.remove(remove_inv)
+    edit_waiting_invitations.release()
+
+    other_conn = remove_inv[1]
+    build_and_send_message(other_conn, commprot.SERVER_CMD["invitation_rejected_msg"], "")
+    send_success(conn)
+
+
+def handle_remove_invitation(conn):
+    global waiting_invitations, user_sockets
+
+    remove_inv = None
+
+    edit_waiting_invitations.acquire()
+    for wait_inv in waiting_invitations:
+        if wait_inv[1] is conn:
+            remove_inv = wait_inv
+    if remove_inv is not None:
+        waiting_invitations.remove(remove_inv)
+        build_and_send_message(conn, commprot.SERVER_CMD["invitation_removed_msg"], "")
+        username = remove_inv[0]
+        try:
+            other_user_socket = user_sockets[remove_inv[2]]
+        except KeyError:
+            print("handle_remove_invitation func - other user was not in user_sockets")
+        else:
+            build_and_send_message(other_user_socket, commprot.SERVER_CMD["remove_invitation_msg"], username)
+    else:
+        send_error(conn, "invitation_not_found")
+    edit_waiting_invitations.release()
 
 
 def handle_exit_room(conn, data):
@@ -679,46 +864,23 @@ def handle_my_score(conn):
 
 def handle_top_ten(conn):
     """
-    creates the current list of the top ten players and sends to client.
+    sends client list of current top ten players.
     if the list is longer than 100 characters (max data field length),
     it also breaks the list to 100 char long bits to send to the client
     """
-    global users
+    global topten
 
-    # CREATING TOP TEN LIST
-    scores = []  # a list of the users and their scores - format: (username, score)
-    for username, user in zip(users.keys(), users.values()):
-        scores.append((username, user["score"]))
-    scores.sort(key=lambda x: x[1], reverse=True)  # sorting the list from big to small by the score
-
-    if len(scores) < 10:
-        range_num = len(scores)
-    else:
-        range_num = 10
-    topten = ""  # the topten list string - format: username1:score1#username2:score2...
-    for i in range(range_num):
-        topten += scores[i][0] + ":" + str(scores[i][1]) + "#"
-    topten = topten[:-1]
+    topten_str = ""  # the topten list string - format: username1:score1#username2:score2...
+    for i in range(len(topten)):
+        topten_str += topten[i][0] + ":" + str(topten[i][1]) + "#"
+    topten_str = topten_str[:-1]
 
     # if the topten list string is within the protocol's limits, sends the client
     # the list as it is, with COMMAND indicating there are no more bits to come
-    if len(topten) <= commprot.MAX_DATA_LENGTH:
-        build_and_send_message(conn, commprot.SERVER_CMD["topten_fin_msg"], topten)
+    if len(topten_str) <= commprot.MAX_DATA_LENGTH:
+        build_and_send_message(conn, commprot.SERVER_CMD["topten_fin_msg"], topten_str)
     else:
-        send_longer_message(conn, "topten", topten)
-
-    # if the topten list string is longer than the protocol's limit,
-    # BREAKING IT INTO 100 CHAR LONG BITS
-    # bit_len = commprot.MAX_DATA_LENGTH
-    # tt_len = len(topten)
-    # rem = tt_len % bit_len
-    # wholes = tt_len - rem
-    # messages = [topten[i: i + bit_len] for i in range(0, wholes, bit_len)]
-    # messages.append(topten[-rem:])
-    #
-    # for i in range(len(messages) - 1):
-    #     build_and_send_message(conn, commprot.SERVER_CMD["topten_part_msg"], messages[i])
-    # build_and_send_message(conn, commprot.SERVER_CMD["topten_fin_msg"], messages[-1])
+        send_longer_message(conn, "topten", topten_str)
 
 
 def handle_logged_users(conn):
@@ -1047,6 +1209,8 @@ def handle_accept_friend_request(conn, data):
         friends_str += "#" + username
     friends[data]["friends"] = friends_str
     update_database("friends", data)
+    if data in user_sockets:
+        build_and_send_message(user_sockets[data], commprot.SERVER_CMD["friends_updated_msg"], "")
 
 
 def handle_reject_friend_request(conn, data):
@@ -1104,186 +1268,7 @@ def handle_reject_friend_request(conn, data):
         update_database("friends", data)
 
 
-def handle_invite_to_play(conn, data):
-    global users, logged_users, playing_clients, user_sockets, waiting_invitations
 
-    if data not in users.keys():  # if wanted user does not exist
-        send_error(conn, "user_not_found")
-        return
-    if data not in logged_users.values():  # if wanted user is not connected to server
-        send_error(conn, "user_not_currently_connected")
-        return
-
-    try:
-        username = logged_users[conn.getpeername()]
-    except KeyError:
-        print("handle_invite_to_play func - client was not logged")
-        handle_logout(conn)
-        return
-    if username == data:  # if the user tried to invite themselves
-        send_error(conn, "your_username")
-        return
-
-    # getting wanted user's peername by username
-    edit_logged_users.acquire()
-    p_id = ""
-    for p, u in zip(logged_users.keys(), logged_users.values()):
-        if u == data:
-            p_id = p
-    edit_logged_users.release()
-    # if it's not found:
-    if p_id == "":
-        send_error(conn, "user_not_currently_connected")
-        return
-
-    # find other user's connection in the not_playing list
-    edit_playing_lists.acquire()
-    other_conn = None
-    for sock in not_playing_clients:
-        if sock.getpeername() == p_id:
-            other_conn = sock
-    edit_playing_lists.release()
-    if other_conn is None:  # if not found in this list, user is currently playing
-        send_error(conn, "user_is_playing")
-        return
-
-    # check if other user is in a waiting room already
-    if other_conn in waiting_id_rooms.values() or other_conn in waiting_open_rooms:
-        send_error(conn, "user_is_playing")
-        return
-
-    edit_waiting_invitations.acquire()
-    for wait_inv in waiting_invitations:
-        if username in wait_inv and data in wait_inv:
-            send_error(conn, "invitation_exist")
-            return
-    edit_waiting_invitations.release()
-
-    try:  # getting the socket to connected to other user's listening socket
-        user_socket = user_sockets[data]
-    except KeyError:
-        print("handle_invite_to_play func - invited client not in user_sockets")
-        send_error(conn, "invitation_not_sent")
-        return
-
-    build_and_send_message(user_socket, commprot.SERVER_CMD["playing_invitation_msg"], username, direct=True)
-    response, _ = recv_message_and_parse(user_socket, settimeout=20)
-    # if invitation was not received properly:
-    if response != commprot.CLIENT_CMD["invitation_received_msg"]:
-        print("handle_invite_to_play func ERROR - invitation didnt reach client. cmd:", response, "msg:", _)
-        send_error(conn, "invitation_not_sent")
-        return
-    edit_waiting_invitations.acquire()
-    waiting_invitations.append((username, conn, data, other_conn))
-    edit_waiting_invitations.release()
-    # if all above went well, send inviting user that invitation was sent
-    send_success(conn)
-
-
-def handle_accept_invitation(conn, data):
-    global waiting_invitations, logged_users
-
-    other_conn = None
-    invitation = None
-    edit_waiting_invitations.acquire()
-    for wait_inv in waiting_invitations:
-        if wait_inv[0] == data and wait_inv[3] is conn:
-            invitation = wait_inv
-            other_conn = wait_inv[1]
-    if invitation is None:
-        send_error(conn, "invitation_not_found")
-        return
-    waiting_invitations.remove(invitation)
-    edit_waiting_invitations.release()
-
-    if data not in logged_users.values():
-        send_error(conn, "other_player_disconnected")
-        return
-
-    send_success(conn, direct=True)
-    build_and_send_message(other_conn, commprot.SERVER_CMD["invitation_accepted_msg"], "", direct=True)
-
-    edit_playing_lists.acquire()
-
-    try:
-        not_playing_clients.remove(conn)
-    except ValueError:
-        send_error(other_conn, "other_player_disconnected")
-        return
-    try:
-        not_playing_clients.remove(other_conn)
-    except ValueError:
-        send_error(conn, "other_player_disconnected")
-        return
-    playing_clients.append(conn)
-    playing_clients.append(other_conn)
-
-    players = [other_conn, conn]
-    playing_rooms.append(players)
-    edit_playing_lists.release()
-
-    play(players)
-
-    edit_playing_lists.acquire()
-    try:
-        playing_clients.remove(conn)
-        not_playing_clients.append(conn)
-    except ValueError:
-        print("handle_accept_invitation func - error: conn was not in playing clients")
-    try:
-        playing_clients.remove(other_conn)
-        not_playing_clients.append(other_conn)
-    except ValueError:
-        print("handle_accept_invitation func - error: other player was not in playing clients")
-    try:
-        playing_rooms.remove(players)
-    except ValueError:
-        print("handle_accept_invitation func - error: players were not in playing_rooms")
-    edit_playing_lists.release()
-
-
-def handle_reject_invitation(conn, data):
-    global waiting_invitations
-
-    other_conn = None
-    remove_inv = None
-    edit_waiting_invitations.release()
-    for wait_inv in waiting_invitations:
-        if wait_inv[0] == data and wait_inv[3] is conn:
-            remove_inv = wait_inv
-    if remove_inv is None:
-        send_error(conn, "invitation_not_found")
-        return
-    waiting_invitations.remove(remove_inv)
-    edit_waiting_invitations.release()
-
-    other_conn = remove_inv[1]
-    build_and_send_message(other_conn, commprot.SERVER_CMD["invitation_rejected_msg"], "")
-    send_success(conn)
-
-
-def handle_remove_invitation(conn):
-    global waiting_invitations, user_sockets
-
-    remove_inv = None
-
-    edit_waiting_invitations.acquire()
-    for wait_inv in waiting_invitations:
-        if wait_inv[1] is conn:
-            remove_inv = wait_inv
-    if remove_inv is not None:
-        waiting_invitations.remove(remove_inv)
-        build_and_send_message(conn, commprot.SERVER_CMD["invitation_removed_msg"], "")
-        username = remove_inv[0]
-        try:
-            other_user_socket = user_sockets[remove_inv[2]]
-        except KeyError:
-            print("handle_remove_invitation func - other user was not in user_sockets")
-        else:
-            build_and_send_message(other_user_socket, commprot.SERVER_CMD["remove_invitation_msg"], username)
-    else:
-        send_error(conn, "invitation_not_found")
-    edit_waiting_invitations.release()
 
 
 # GAME OPERATOR
@@ -1352,6 +1337,7 @@ def main():
 
     users = commprot.read_database("users")
     friends = commprot.read_database("friends")
+    set_topten()
 
     while True:
         rlist, wlist, xlist = select.select([server_socket] + not_playing_clients,
@@ -1371,12 +1357,11 @@ def main():
                     print("cmd was empty - logging client out")
                     handle_logout(current_socket)
 
-        send_waiting_messages(messages_to_send, wlist)
+        # send_waiting_messages(messages_to_send, wlist)
 
 
 if __name__ == '__main__':
-    # IP = '192.168.1.113'
-    IP = '192.168.11.147'
+    IP = '192.168.1.113'
     # IP = '127.0.0.1'
     PORT = 1984
     server_socket = socket.socket()

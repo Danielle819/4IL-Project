@@ -68,6 +68,8 @@ SERVER_CMD = {
     "invitation_accepted_msg": "INVITATION_ACCEPTED",  # ''
     "invitation_rejected_msg": "INVITATION_REJECTED",  # ''
     "invitation_removed_msg": "INVITATION_REMOVED",  # ''
+    "topten_updated_msg": "TOPTEN_UPDATED",  # ''
+    "friends_updated_msg": "FRIENDS_UPDATED",  # ''
     "error_msg": "ERROR"  # the error
 }
 
@@ -83,7 +85,7 @@ DATA_MESSAGES = {
     "password_restrictions": "Password should be 8-20 characters, letters and digits only",
     "its_current_username": "That is your current username",
     "its_current_password": "That is your current password",
-    "other_player_disconnected": "Other player disconnected",
+    "other_player_disconnected": "The other player has disconnected",
     "id_not_found": "ID was not found",
     "exited_room": "You have exited the room successfully",
     "you_won": "You won! Well done!",
@@ -92,19 +94,19 @@ DATA_MESSAGES = {
     "other_player_exited": "The other player exited the game room",
     "you_exited": "You exited the game room",
     "no_open_rooms": "There are no open rooms available. Try again later",
-    "your_username": "The username you submitted is yours",
-    "friend_not_found": "The friend you tried to remove was not in your friends list",
-    "user_not_found": "The user you submitted was not found",
+    "your_username": "This username is yours",
+    "friend_not_found": "This user was found not in your friends list",
+    "user_not_found": "This user was not found",
     "user_in_sent_requests": "You already sent a friend request to this user",
     "user_in_pend_requests": "This user has sent you a friend request already. Accept it!",
-    "user_in_your_friends": "The user you tried to send a request to is already in your friends list",
+    "user_in_your_friends": "This user is already in your friends list",
     "user_not_sent": "The friend request you tried to remove does not exist",
-    "user_not_pending": "The user whose request you tried to accept was not in your pending requests list",
-    "user_not_currently_connected": "The user you tried to invite to play is not connected currently. Try again later",
-    "user_is_playing": "The user you tried to invite to play is currently playing. Try again later",
+    "user_not_pending": "This user was not found in your pending requests list",
+    "user_not_currently_connected": "This user is currently not connected. Try again later",
+    "user_is_playing": "This user is currently playing. Try again later",
     "invitation_exist": "The invitation already exists. Check if the other player had sent you one already",
-    "invitation_not_sent": "The invitation you sent was not able to get to the other user",
-    "invited_disconnected": "The user you sent the invitation to has already disconnected",
+    "invitation_not_sent": "The invitation was not able to get to the other user",
+    "invited_disconnected": "This user has already disconnected",
     "invitation_not_found": "The invitation was not found",
     '': '',
     None: None
@@ -296,10 +298,6 @@ def update_database(tb, db_dict, user, new_user=False, un_cng=False):
         if new_user:
             sql = f''' INSERT INTO Friends VALUES ('{user}', '{db_dict[user]["friends"]}', 
                         '{db_dict[user]["pending_requests"]}', '{db_dict[user]["sent_requests"]}') '''
-            cur.execute(sql)
-        elif un_cng:
-            pre_un, new_un = user
-            sql = f''' UPDATE Friends SET username = '{new_un}' WHERE username = '{pre_un}' '''
             cur.execute(sql)
         else:
             sql = f''' UPDATE Friends SET friends = '{db_dict[user]["friends"]}', 

@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <widget class="QWidget" name="bgwidget" native="true">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1000</width>
+     <height>600</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <underline>false</underline>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QWidget#bgwidget{
+background-color: qlineargradient(spread:pad, x1:0.0511364, y1:0.068, x2:0.813, y2:0.823864, stop:0 rgba(209, 107, 165, 255), stop:1 rgba(255, 255, 255, 255));
+	background-color: qlineargradient(spread:pad, x1:0.142, y1:0.130818, x2:0.9375, y2:0.932, stop:0 rgba(10, 9, 16, 255), stop:1 rgba(73, 0, 126, 255));
+	background-color: qlineargradient(spread:pad, x1:0.0454545, y1:0.125, x2:0.954545, y2:0.915, stop:0 rgba(186, 166, 165, 255), stop:1 rgba(222, 191, 181, 255));
+	background-color: qlineargradient(spread:pad, x1:0.057, y1:0.0625, x2:0.988636, y2:0.96, stop:0 rgba(82, 151, 172, 255), stop:1 rgba(166, 198, 193, 255));
+}
+</string>
+   </property>
+   <widget class="QLabel" name="playlabel">
+    <property name="geometry">
+     <rect>
+      <x>230</x>
+      <y>160</y>
+      <width>540</width>
+      <height>70</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Century Gothic</family>
+      <pointsize>48</pointsize>
+      <weight>50</weight>
+      <italic>false</italic>
+      <bold>false</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(230, 224, 207);
+font: 48pt &quot;Maiandra GD&quot;;
+font: 48pt &quot;MV Boli&quot;;
+font: 75 48pt &quot;Segoe Script&quot;;
+font: 48pt &quot;Century Gothic&quot;;
+</string>
+    </property>
+    <property name="text">
+     <string>PLAY!</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="createroombutton">
+    <property name="geometry">
+     <rect>
+      <x>400</x>
+      <y>280</y>
+      <width>200</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="mouseTracking">
+     <bool>false</bool>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius:5px;
+color: rgb(255, 255, 255);
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+}
+
+QPushButton:hover{
+background-color: #b5debf;
+}
+</string>
+    </property>
+    <property name="text">
+     <string>CREATE A ROOM</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="joinroombutton">
+    <property name="geometry">
+     <rect>
+      <x>400</x>
+      <y>340</y>
+      <width>200</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius:5px;
+color: rgb(255, 255, 255);
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+}
+
+QPushButton:hover{
+background-color: #b5debf;
+}
+</string>
+    </property>
+    <property name="text">
+     <string>JOIN A ROOM</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="invitationbutton">
+    <property name="geometry">
+     <rect>
+      <x>400</x>
+      <y>400</y>
+      <width>200</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius:5px;
+color: rgb(255, 255, 255);
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+}
+
+QPushButton:hover{
+background-color: #b5debf;
+}
+</string>
+    </property>
+    <property name="text">
+     <string>INVITATIONS</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="createopenbutton">
+    <property name="geometry">
+     <rect>
+      <x>400</x>
+      <y>280</y>
+      <width>90</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="mouseTracking">
+     <bool>false</bool>
+    </property>
+    <property name="toolTip">
+     <string/>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius:5px;
+color: rgb(255, 255, 255);
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+}
+
+QPushButton:hover{
+background-color: #b5debf;
+}
+</string>
+    </property>
+    <property name="text">
+     <string>OPEN</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="createbyidbutton">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>280</y>
+      <width>90</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="mouseTracking">
+     <bool>false</bool>
+    </property>
+    <property name="toolTip">
+     <string/>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius:5px;
+color: rgb(255, 255, 255);
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+}
+
+QPushButton:hover{
+background-color: #b5debf;
+}
+</string>
+    </property>
+    <property name="text">
+     <string>BY ID</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="joinopenbutton">
+    <property name="geometry">
+     <rect>
+      <x>400</x>
+      <y>340</y>
+      <width>90</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="mouseTracking">
+     <bool>false</bool>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius:5px;
+color: rgb(255, 255, 255);
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+}
+
+QPushButton:hover{
+background-color: #b5debf;
+}
+</string>
+    </property>
+    <property name="text">
+     <string>OPEN</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="joinbyidbutton">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>340</y>
+      <width>90</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="mouseTracking">
+     <bool>false</bool>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius:5px;
+color: rgb(255, 255, 255);
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+}
+
+QPushButton:hover{
+background-color: #b5debf;
+}
+</string>
+    </property>
+    <property name="text">
+     <string>BY ID</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="closecreatebutton">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>285</y>
+      <width>30</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>MS Shell Dlg 2</family>
+      <pointsize>14</pointsize>
+      <weight>50</weight>
+      <italic>false</italic>
+      <bold>false</bold>
+      <underline>true</underline>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius: 5px;
+background-color:transparent;
+}
+
+QPushButton:hover{
+background-color:rgba(225,225,225,30);
+}</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>../pictures/X2.png</normaloff>../pictures/X2.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>25</width>
+      <height>25</height>
+     </size>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="closejoinbutton">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>345</y>
+      <width>30</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>MS Shell Dlg 2</family>
+      <pointsize>14</pointsize>
+      <weight>50</weight>
+      <italic>false</italic>
+      <bold>false</bold>
+      <underline>true</underline>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius: 5px;
+background-color:transparent;
+}
+
+QPushButton:hover{
+background-color:rgba(225,225,225,30);
+}</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>../pictures/X2.png</normaloff>../pictures/X2.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>25</width>
+      <height>25</height>
+     </size>
+    </property>
+   </widget>
+   <widget class="QLabel" name="usernamelabel">
+    <property name="geometry">
+     <rect>
+      <x>745</x>
+      <y>25</y>
+      <width>200</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(117, 104, 104);
+font: 14pt &quot;Century Gothic&quot;;
+color: rgb(230, 224, 207);
+</string>
+    </property>
+    <property name="text">
+     <string>usernamelabel</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="scorelabel">
+    <property name="geometry">
+     <rect>
+      <x>744</x>
+      <y>50</y>
+      <width>200</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(117, 104, 104);
+font: 14pt &quot;MS Shell Dlg 2&quot;;
+font: 13pt &quot;Century Gothic&quot;;
+color: rgb(230, 224, 207);
+</string>
+    </property>
+    <property name="text">
+     <string>SCORE: 0</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="gobackbutton">
+    <property name="geometry">
+     <rect>
+      <x>11</x>
+      <y>10</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Century Gothic</family>
+      <pointsize>10</pointsize>
+      <weight>50</weight>
+      <italic>false</italic>
+      <bold>false</bold>
+      <underline>true</underline>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(230, 224, 207);
+font: 10pt &quot;Century Gothic&quot;;
+background-color:rgba(0,0,0,0);</string>
+    </property>
+    <property name="text">
+     <string>&lt; GO BACK</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="sendidbutton">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>345</y>
+      <width>30</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>MS Shell Dlg 2</family>
+      <pointsize>14</pointsize>
+      <weight>50</weight>
+      <italic>false</italic>
+      <bold>false</bold>
+      <underline>true</underline>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+border-radius: 5px;
+background-color:transparent;
+}
+
+QPushButton:hover{
+background-color:rgba(225,225,225,30);
+}</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>../pictures/checkmark.png</normaloff>../pictures/checkmark.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>27</width>
+      <height>27</height>
+     </size>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="idfield">
+    <property name="geometry">
+     <rect>
+      <x>400</x>
+      <y>340</y>
+      <width>200</width>
+      <height>40</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(245, 238, 220);
+font: 13pt &quot;MS Shell Dlg 2&quot;;</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="errorlabel">
+    <property name="geometry">
+     <rect>
+      <x>330</x>
+      <y>380</y>
+      <width>340</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">font: 10pt &quot;MS Shell Dlg 2&quot;;
+color: rgb(255, 0, 4);</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignHCenter|Qt::AlignTop</set>
+    </property>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

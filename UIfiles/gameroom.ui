@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1000</width>
-    <height>605</height>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,13 +28,7 @@
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">QWidget#bgwidget{
-background-color: qlineargradient(spread:pad, x1:0.0511364, y1:0.068, x2:0.813, y2:0.823864, stop:0 rgba(209, 107, 165, 255), stop:1 rgba(255, 255, 255, 255));
-	background-color: qlineargradient(spread:pad, x1:0.142, y1:0.130818, x2:0.9375, y2:0.932, stop:0 rgba(10, 9, 16, 255), stop:1 rgba(73, 0, 126, 255));
-	background-color: qlineargradient(spread:pad, x1:0.0454545, y1:0.125, x2:0.954545, y2:0.915, stop:0 rgba(186, 166, 165, 255), stop:1 rgba(222, 191, 181, 255));
-	background-color: qlineargradient(spread:pad, x1:0.057, y1:0.0625, x2:0.988636, y2:0.96, stop:0 rgba(82, 151, 172, 255), stop:1 rgba(166, 198, 193, 255));
-}
-</string>
+    <string notr="true"/>
    </property>
    <widget class="QLabel" name="otherusernamelabel">
     <property name="geometry">
@@ -42,12 +36,12 @@ background-color: qlineargradient(spread:pad, x1:0.0511364, y1:0.068, x2:0.813, 
       <x>720</x>
       <y>40</y>
       <width>200</width>
-      <height>20</height>
+      <height>23</height>
      </rect>
     </property>
     <property name="styleSheet">
      <string notr="true">font: 14pt &quot;Century Gothic&quot;;
-color: rgb(154, 133, 143, 255);</string>
+color: rgb(154, 133, 143);</string>
     </property>
     <property name="text">
      <string/>
@@ -1010,7 +1004,7 @@ background-color: rgba(255, 255, 255, 20);
       <x>70</x>
       <y>40</y>
       <width>200</width>
-      <height>20</height>
+      <height>23</height>
      </rect>
     </property>
     <property name="styleSheet">
@@ -1147,6 +1141,41 @@ font: 10pt &quot;MS Shell Dlg 2&quot;;</string>
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
+   <widget class="QLabel" name="animated_circle">
+    <property name="geometry">
+     <rect>
+      <x>930</x>
+      <y>530</y>
+      <width>70</width>
+      <height>70</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border-radius:35px;
+background-color: rgba(255, 255, 255, 20);
+</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="backgroundlabel">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>1000</width>
+      <height>600</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>../pictures/background.png</pixmap>
+    </property>
+   </widget>
+   <zorder>backgroundlabel</zorder>
    <zorder>otherusernamelabel</zorder>
    <zorder>exitbutton</zorder>
    <zorder>cell00</zorder>
@@ -1193,17 +1222,18 @@ font: 10pt &quot;MS Shell Dlg 2&quot;;</string>
    <zorder>cell62</zorder>
    <zorder>yourusernamelabel</zorder>
    <zorder>idlabel</zorder>
-   <zorder>column0</zorder>
-   <zorder>column1</zorder>
-   <zorder>column2</zorder>
-   <zorder>column3</zorder>
-   <zorder>column4</zorder>
-   <zorder>column5</zorder>
    <zorder>errorlabel</zorder>
    <zorder>gameoverlabel</zorder>
    <zorder>gamescorelabel</zorder>
    <zorder>instructionslabel</zorder>
+   <zorder>animated_circle</zorder>
    <zorder>column6</zorder>
+   <zorder>column5</zorder>
+   <zorder>column4</zorder>
+   <zorder>column3</zorder>
+   <zorder>column2</zorder>
+   <zorder>column1</zorder>
+   <zorder>column0</zorder>
   </widget>
  </widget>
  <resources/>

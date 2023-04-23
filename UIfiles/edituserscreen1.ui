@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <widget class="QLabel" name="backgroundlabel">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1000</width>
+     <height>600</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap>../pictures/background.png</pixmap>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="gobackbutton">
+   <property name="geometry">
+    <rect>
+     <x>11</x>
+     <y>10</y>
+     <width>81</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Century Gothic</family>
+     <pointsize>10</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+     <underline>true</underline>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(230, 224, 207);
+font: 10pt &quot;Century Gothic&quot;;
+background-color:rgba(0,0,0,0);</string>
+   </property>
+   <property name="text">
+    <string>&lt; GO BACK</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="userinfolabel">
+   <property name="geometry">
+    <rect>
+     <x>180</x>
+     <y>140</y>
+     <width>300</width>
+     <height>71</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Century Gothic</family>
+     <pointsize>40</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(230, 224, 207);
+font: 40pt &quot;Century Gothic&quot;;
+</string>
+   </property>
+   <property name="text">
+    <string>USER INFO</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="editusernamebutton">
+   <property name="geometry">
+    <rect>
+     <x>180</x>
+     <y>240</y>
+     <width>30</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>MS Shell Dlg 2</family>
+     <pointsize>16</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+     <underline>true</underline>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 16pt &quot;MS Shell Dlg 2&quot;;
+background-color:transparent;
+color: rgb(117, 104, 104);
+color: rgb(230, 224, 207);
+
+</string>
+   </property>
+   <property name="text">
+    <string>🖉</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="usernamelabel">
+   <property name="geometry">
+    <rect>
+     <x>215</x>
+     <y>240</y>
+     <width>361</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 16pt &quot;Century Gothic&quot;;
+color:rgb(222, 191, 181);</string>
+   </property>
+   <property name="text">
+    <string>username:</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="editpasswordbutton">
+   <property name="geometry">
+    <rect>
+     <x>180</x>
+     <y>298</y>
+     <width>30</width>
+     <height>30</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>MS Shell Dlg 2</family>
+     <pointsize>16</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+     <underline>true</underline>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 16pt &quot;MS Shell Dlg 2&quot;;
+background-color:transparent;
+color: rgb(117, 104, 104);
+color: rgb(230, 224, 207);
+
+</string>
+   </property>
+   <property name="text">
+    <string>🖉</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="passwordlabel">
+   <property name="geometry">
+    <rect>
+     <x>215</x>
+     <y>300</y>
+     <width>361</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 16pt &quot;Century Gothic&quot;;
+color:rgb(222, 191, 181);</string>
+   </property>
+   <property name="text">
+    <string>password: </string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="upfield">
+   <property name="geometry">
+    <rect>
+     <x>620</x>
+     <y>245</y>
+     <width>200</width>
+     <height>40</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: rgb(230, 224, 207);
+font: 13pt &quot;MS Shell Dlg 2&quot;;
+background-color: rgb(245, 238, 220);</string>
+   </property>
+   <property name="clearButtonEnabled">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="confirmupfield">
+   <property name="geometry">
+    <rect>
+     <x>620</x>
+     <y>310</y>
+     <width>200</width>
+     <height>40</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: rgb(245, 238, 220);
+font: 13pt &quot;MS Shell Dlg 2&quot;;</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="passwordminilabel">
+   <property name="geometry">
+    <rect>
+     <x>622</x>
+     <y>225</y>
+     <width>61</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>MS Shell Dlg 2</family>
+     <pointsize>10</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 10pt &quot;MS Shell Dlg 2&quot;;
+color: rgb(117, 104, 104);
+font: 10pt &quot;MS Shell Dlg 2&quot;;
+</string>
+   </property>
+   <property name="text">
+    <string>Password</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="confirmpasswordlabel">
+   <property name="geometry">
+    <rect>
+     <x>622</x>
+     <y>290</y>
+     <width>131</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>MS Shell Dlg 2</family>
+     <pointsize>10</pointsize>
+     <weight>9</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 10pt &quot;MS Shell Dlg 2&quot;;
+color: rgb(145, 129, 129);
+color: rgb(117, 104, 104);
+font: 75 10pt &quot;MS Shell Dlg 2&quot;;
+</string>
+   </property>
+   <property name="text">
+    <string>Confirm password</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="passwordsavebutton">
+   <property name="geometry">
+    <rect>
+     <x>620</x>
+     <y>390</y>
+     <width>200</width>
+     <height>40</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+border-radius:5px;
+color: rgb(255, 255, 255);
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+}
+
+QPushButton:hover{
+background-color: #b5debf;
+}
+</string>
+   </property>
+   <property name="text">
+    <string>SAVE</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="messagelabel">
+   <property name="geometry">
+    <rect>
+     <x>550</x>
+     <y>365</y>
+     <width>340</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 10pt &quot;MS Shell Dlg 2&quot;;
+color: rgb(255, 0, 4);</string>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="usernameminilabel">
+   <property name="geometry">
+    <rect>
+     <x>622</x>
+     <y>225</y>
+     <width>61</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>MS Shell Dlg 2</family>
+     <pointsize>10</pointsize>
+     <weight>50</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 10pt &quot;MS Shell Dlg 2&quot;;
+color: rgb(117, 104, 104);
+font: 10pt &quot;MS Shell Dlg 2&quot;;
+</string>
+   </property>
+   <property name="text">
+    <string>Username</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="confirmusernamelabel">
+   <property name="geometry">
+    <rect>
+     <x>622</x>
+     <y>290</y>
+     <width>131</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>MS Shell Dlg 2</family>
+     <pointsize>10</pointsize>
+     <weight>9</weight>
+     <italic>false</italic>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 10pt &quot;MS Shell Dlg 2&quot;;
+color: rgb(145, 129, 129);
+color: rgb(117, 104, 104);
+font: 75 10pt &quot;MS Shell Dlg 2&quot;;
+</string>
+   </property>
+   <property name="text">
+    <string>Confirm username</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="usernamesavebutton">
+   <property name="geometry">
+    <rect>
+     <x>620</x>
+     <y>390</y>
+     <width>200</width>
+     <height>40</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">border-radius:5px;
+background-color: rgb(255, 255, 127);
+color: rgb(255, 255, 255);
+font: 14pt &quot;Courier New&quot;;
+gridline-color: rgb(255, 255, 255);
+background-color: transparent;
+font: 16pt &quot;Century Gothic&quot;;
+background-color: rgb(222, 191, 181);
+</string>
+   </property>
+   <property name="text">
+    <string>SAVE</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

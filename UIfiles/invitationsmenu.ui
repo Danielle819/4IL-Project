@@ -28,13 +28,7 @@
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">QWidget#bgwidget{
-background-color: qlineargradient(spread:pad, x1:0.0511364, y1:0.068, x2:0.813, y2:0.823864, stop:0 rgba(209, 107, 165, 255), stop:1 rgba(255, 255, 255, 255));
-	background-color: qlineargradient(spread:pad, x1:0.142, y1:0.130818, x2:0.9375, y2:0.932, stop:0 rgba(10, 9, 16, 255), stop:1 rgba(73, 0, 126, 255));
-	background-color: qlineargradient(spread:pad, x1:0.0454545, y1:0.125, x2:0.954545, y2:0.915, stop:0 rgba(186, 166, 165, 255), stop:1 rgba(222, 191, 181, 255));
-	background-color: qlineargradient(spread:pad, x1:0.057, y1:0.0625, x2:0.988636, y2:0.96, stop:0 rgba(82, 151, 172, 255), stop:1 rgba(166, 198, 193, 255));
-}
-</string>
+    <string notr="true"/>
    </property>
    <widget class="QLabel" name="invitationslabel">
     <property name="geometry">
@@ -102,7 +96,7 @@ background-color: #b5debf;
       <x>745</x>
       <y>25</y>
       <width>200</width>
-      <height>20</height>
+      <height>23</height>
      </rect>
     </property>
     <property name="styleSheet">
@@ -427,6 +421,36 @@ font: 10pt &quot;MS Shell Dlg 2&quot;;</string>
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
+   <widget class="QLabel" name="backgroundlabel">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>1000</width>
+      <height>600</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>../pictures/background.png</pixmap>
+    </property>
+   </widget>
+   <zorder>backgroundlabel</zorder>
+   <zorder>invitationslabel</zorder>
+   <zorder>invitetoplaybutton</zorder>
+   <zorder>usernamelabel</zorder>
+   <zorder>scorelabel</zorder>
+   <zorder>gobackbutton</zorder>
+   <zorder>invitationstable</zorder>
+   <zorder>yourinvitationslabel</zorder>
+   <zorder>usernamefield</zorder>
+   <zorder>sendbutton</zorder>
+   <zorder>closebutton</zorder>
+   <zorder>statuslabel</zorder>
+   <zorder>detailslabel</zorder>
+   <zorder>errorlabel</zorder>
   </widget>
  </widget>
  <resources/>

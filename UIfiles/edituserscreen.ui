@@ -27,13 +27,11 @@
      <underline>false</underline>
     </font>
    </property>
+   <property name="autoFillBackground">
+    <bool>false</bool>
+   </property>
    <property name="styleSheet">
-    <string notr="true">QWidget#bgwidget{
-background-color: qlineargradient(spread:pad, x1:0.0511364, y1:0.068, x2:0.813, y2:0.823864, stop:0 rgba(209, 107, 165, 255), stop:1 rgba(255, 255, 255, 255));
-	background-color: qlineargradient(spread:pad, x1:0.142, y1:0.130818, x2:0.9375, y2:0.932, stop:0 rgba(10, 9, 16, 255), stop:1 rgba(73, 0, 126, 255));
-	background-color: qlineargradient(spread:pad, x1:0.0454545, y1:0.125, x2:0.954545, y2:0.915, stop:0 rgba(186, 166, 165, 255), stop:1 rgba(222, 191, 181, 255));
-	background-color: qlineargradient(spread:pad, x1:0.057, y1:0.0625, x2:0.988636, y2:0.96, stop:0 rgba(82, 151, 172, 255), stop:1 rgba(166, 198, 193, 255));
-}
+    <string notr="true">QWidget#Form {background-image: url(&quot;C:\Users\Daniel\PycharmProjects\4IL_Project\pictures\background.png&quot;);}
 </string>
    </property>
    <widget class="QLabel" name="userinfolabel">
@@ -265,7 +263,7 @@ color:rgb(222, 191, 181);</string>
     <property name="geometry">
      <rect>
       <x>180</x>
-      <y>238</y>
+      <y>240</y>
       <width>30</width>
       <height>30</height>
      </rect>
@@ -406,6 +404,38 @@ background-color: #b5debf;
      <string>SAVE</string>
     </property>
    </widget>
+   <widget class="QLabel" name="backgroundlabel">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>1000</width>
+      <height>600</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>../pictures/background.png</pixmap>
+    </property>
+   </widget>
+   <zorder>backgroundlabel</zorder>
+   <zorder>userinfolabel</zorder>
+   <zorder>usernamesavebutton</zorder>
+   <zorder>upfield</zorder>
+   <zorder>confirmupfield</zorder>
+   <zorder>usernameminilabel</zorder>
+   <zorder>confirmusernamelabel</zorder>
+   <zorder>messagelabel</zorder>
+   <zorder>gobackbutton</zorder>
+   <zorder>usernamelabel</zorder>
+   <zorder>passwordlabel</zorder>
+   <zorder>editusernamebutton</zorder>
+   <zorder>editpasswordbutton</zorder>
+   <zorder>passwordminilabel</zorder>
+   <zorder>confirmpasswordlabel</zorder>
+   <zorder>passwordsavebutton</zorder>
   </widget>
  </widget>
  <resources/>

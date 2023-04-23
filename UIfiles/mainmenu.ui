@@ -28,13 +28,7 @@
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">QWidget#bgwidget{
-background-color: qlineargradient(spread:pad, x1:0.0511364, y1:0.068, x2:0.813, y2:0.823864, stop:0 rgba(209, 107, 165, 255), stop:1 rgba(255, 255, 255, 255));
-	background-color: qlineargradient(spread:pad, x1:0.142, y1:0.130818, x2:0.9375, y2:0.932, stop:0 rgba(10, 9, 16, 255), stop:1 rgba(73, 0, 126, 255));
-	background-color: qlineargradient(spread:pad, x1:0.0454545, y1:0.125, x2:0.954545, y2:0.915, stop:0 rgba(186, 166, 165, 255), stop:1 rgba(222, 191, 181, 255));
-	background-color: qlineargradient(spread:pad, x1:0.057, y1:0.0625, x2:0.988636, y2:0.96, stop:0 rgba(82, 151, 172, 255), stop:1 rgba(166, 198, 193, 255));
-}
-</string>
+    <string notr="true"/>
    </property>
    <widget class="QLabel" name="menulabel">
     <property name="geometry">
@@ -160,7 +154,7 @@ background-color: #b5debf;
       <x>745</x>
       <y>25</y>
       <width>200</width>
-      <height>20</height>
+      <height>23</height>
      </rect>
     </property>
     <property name="styleSheet">
@@ -180,7 +174,7 @@ color: rgb(230, 224, 207);
     <property name="geometry">
      <rect>
       <x>950</x>
-      <y>17</y>
+      <y>20</y>
       <width>30</width>
       <height>30</height>
      </rect>
@@ -258,6 +252,31 @@ color: rgb(230, 224, 207);
      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
     </property>
    </widget>
+   <widget class="QLabel" name="backgroundlabel">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>1000</width>
+      <height>600</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>../pictures/background.png</pixmap>
+    </property>
+   </widget>
+   <zorder>backgroundlabel</zorder>
+   <zorder>menulabel</zorder>
+   <zorder>playbutton</zorder>
+   <zorder>toptenbutton</zorder>
+   <zorder>friendsbutton</zorder>
+   <zorder>usernamelabel</zorder>
+   <zorder>edituserbutton</zorder>
+   <zorder>logoutbutton</zorder>
+   <zorder>scorelabel</zorder>
   </widget>
  </widget>
  <resources/>

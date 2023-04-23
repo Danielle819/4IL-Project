@@ -1,13 +1,15 @@
-# import time
+# COSTUME MODULES IMPORTS
 import commprot
+import game
+# OPERATIONS NECESSITY IMPORTS
 import socket
 import select
-import game
 import threading
 from threading import *
+# HELPER MODULES
 import random
 import string
-# import sys
+import time
 # from colorama import Fore, Style
 
 # GLOBALS
@@ -34,19 +36,9 @@ edit_waiting_invitations = Semaphore()
 def build_and_send_message(conn, cmd, msg, direct=False):
     message = commprot.build_message(cmd, str(msg))
     # print(Fore.GREEN + "build_and_send_message - sent:", message + Style.RESET_ALL)
-    # if not direct:
-    #     messages_to_send.append((conn, message))
-    # if direct:
-    #     try:
-    #         print("----build_and_send_message - SENT:", message)
-    #         conn.send(message.encode())
-    #     except:
-    #         print("----build_and_send_message - NOT SENT:", message)
-    #         handle_logout(conn)
-    #         return False
     try:
-        print("----build_and_send_message - SENT:", message)
         conn.send(message.encode())
+        print("----build_and_send_message - SENT:", message)
     except:
         print("----build_and_send_message - NOT SENT:", message)
         handle_logout(conn)
@@ -67,7 +59,6 @@ def recv_message_and_parse(conn, settimeout=0):
     if message == "":
         print("----recv_message_and_parse - GOT: EMPTY MESSAGE")
         return "", ""
-    # print(Fore.GREEN + "recv_message_and_parse - got:", message + Style.RESET_ALL)
     # print(Fore.CYAN + "----recv_message_and_parse - message:", message + Style.RESET_ALL)
     print("----recv_message_and_parse - GOT:", message)
     cmd, msg = commprot.parse_message(message)
@@ -77,19 +68,6 @@ def recv_message_and_parse(conn, settimeout=0):
 
 
 # OTHER HELPER METHODS
-
-# def send_waiting_messages(messages, wlist):
-#     for i in range(len(messages)):
-#         current_socket, data = messages[0]
-#         # print("----send_waiting_messages - before if:", data)
-#         if current_socket in wlist:
-#             try:
-#                 current_socket.send(data.encode())
-#                 print("send_waiting_messages func - SENT:", data)
-#                 messages.remove(messages[0])
-#             except:
-#                 handle_logout(current_socket)
-
 
 def send_success(conn, msg='', direct=False):
     """
@@ -132,8 +110,6 @@ def set_topten():
 
     if len(topten) > 10:
         topten = topten[:10]
-
-    print(topten)
 
 
 def create_id():
@@ -1018,6 +994,8 @@ def handle_remove_friend(conn, data):
     other_friend_str = other_friend_str[:-1]
     friends[data]["friends"] = other_friend_str
     update_database("friends", data)
+    if data in user_sockets:
+        build_and_send_message(user_sockets[data], commprot.SERVER_CMD["friends_updated_msg"], "")
 
 
 def handle_send_friend_request(conn, data):
@@ -1082,6 +1060,8 @@ def handle_send_friend_request(conn, data):
     else:
         friends[data] = {"friends": '', "pending_requests": username, "sent_requests": ''}
         update_database("friends", data, new_user=True)
+    if data in user_sockets:
+        build_and_send_message(user_sockets[data], commprot.SERVER_CMD["friends_updated_msg"], "")
 
 
 def handle_remove_friend_request(conn, data):
@@ -1128,13 +1108,16 @@ def handle_remove_friend_request(conn, data):
         pend_reqs_lst.remove(username)
     except ValueError:
         print("handle_remove_friend_request func ERROR: username was not in other user's pending_requests")
-    else:
-        pend_reqs_str = ""
-        for req in pend_reqs_lst:
-            pend_reqs_str += req + "#"
-        pend_reqs_str = pend_reqs_str[:-1]
-        friends[data]["pending_requests"] = pend_reqs_str
-        update_database("friends", data)
+        return
+
+    pend_reqs_str = ""
+    for req in pend_reqs_lst:
+        pend_reqs_str += req + "#"
+    pend_reqs_str = pend_reqs_str[:-1]
+    friends[data]["pending_requests"] = pend_reqs_str
+    update_database("friends", data)
+    if data in user_sockets:
+        build_and_send_message(user_sockets[data], commprot.SERVER_CMD["friends_updated_msg"], "")
 
 
 def handle_accept_friend_request(conn, data):
@@ -1185,6 +1168,8 @@ def handle_accept_friend_request(conn, data):
         friends[data] = {"friends": username, "pending_requests": '', "sent_requests": ''}
         update_database("friends", data, new_user=True)
         print("handle_accept_friend_request func ERROR: other user was not in friends db")
+        if data in user_sockets:
+            build_and_send_message(user_sockets[data], commprot.SERVER_CMD["friends_updated_msg"], "")
         return
 
     # removing username from "data"'s sent list
@@ -1247,7 +1232,7 @@ def handle_reject_friend_request(conn, data):
     update_database("friends", username)
     send_success(conn)
 
-    # HANDLING OTHER USER"S (DATA'S) FRIENDS LISTS
+    # HANDLING OTHER USER'S (DATA'S) FRIENDS LISTS
     if data not in friends.keys():
         print("handle_reject_friend_request func ERROR: other user was not in friends db")
         return
@@ -1259,16 +1244,16 @@ def handle_reject_friend_request(conn, data):
         sent_reqs_lst.remove(username)
     except ValueError:
         print("handle_reject_friend_request func ERROR: other user didnt have username in sent_requests")
-    else:
-        sent_reqs_str = ""
-        for req in sent_reqs_lst:
-            sent_reqs_str += req + "#"
-        sent_reqs_str = sent_reqs_str[:-1]
-        friends[data]["sent_requests"] = sent_reqs_str
-        update_database("friends", data)
+        return
 
-
-
+    sent_reqs_str = ""
+    for req in sent_reqs_lst:
+        sent_reqs_str += req + "#"
+    sent_reqs_str = sent_reqs_str[:-1]
+    friends[data]["sent_requests"] = sent_reqs_str
+    update_database("friends", data)
+    if data in user_sockets:
+        build_and_send_message(user_sockets[data], commprot.SERVER_CMD["friends_updated_msg"], "")
 
 
 # GAME OPERATOR
@@ -1281,11 +1266,9 @@ def play(players):
 
     usernames = [logged_users[players[0].getpeername()], logged_users[players[1].getpeername()]]
 
-    if not send_players_board(players, board):
-        return False
-
     if not send_both_players(players[0], players[1], commprot.SERVER_CMD["other_player_msg"], usernames[1], usernames[0]):
         return False
+
     print(board.board)
     while turns < 42 and not game.check_board(board):
         if turn1:
@@ -1312,6 +1295,8 @@ def play(players):
         return False
     # time.sleep(0.5)
 
+    if turns == 42:
+        game.check_board(board)
     winner = board.winner
     if winner == 1:
         send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "you_won", "you_lost")
@@ -1330,9 +1315,7 @@ def play(players):
 
 def main():
     global users, friends, playing_clients, not_playing_clients
-    # global messages_to_send
 
-    # print(Fore.MAGENTA + "Welcome to the 4IL server!!" + Style.RESET_ALL)
     print("Welcome to the 4IL server!!")
 
     users = commprot.read_database("users")
@@ -1357,8 +1340,6 @@ def main():
                     print("cmd was empty - logging client out")
                     handle_logout(current_socket)
 
-        # send_waiting_messages(messages_to_send, wlist)
-
 
 if __name__ == '__main__':
     IP = '192.168.1.113'
@@ -1366,7 +1347,6 @@ if __name__ == '__main__':
     PORT = 1984
     server_socket = socket.socket()
     server_socket.bind((IP, PORT))
-    server_socket.listen(5)
+    server_socket.listen(10)
 
     main()
-

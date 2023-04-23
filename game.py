@@ -16,70 +16,16 @@ class Board:
         self.winner = player
 
 
-# def start_game():
-#     board = np.zeros((6,7), dtype=int)
-#     print(board)
-#
-#     turn1 = True
-#     turn2 = False
-#     turn = 0
-#     while turn < 42 and not check_board(board):
-#         if turn1:
-#             print("turn:", 1)
-#             turn = 1
-#         elif turn2:
-#             print("turn:", 2)
-#             turn = 2
-#         place = get_place(board)
-#         board[place] = turn
-#         print(board)
-#         turn1 = not turn1
-#         turn2 = not turn2
-#
-#         turn += 1
-#
-#     if turn1:
-#         print("winner:", 2)
-#     else:
-#         print("winner:", 1)
-
-
 def get_place(board, col):
-    # col = get_col()
     if col == "E":
         return "E"
-
-    while not check_col(board, col):
-        print("inaccessible place, try again.")
-        col = get_col()
 
     row = board.shape[0] - 1
     while board[row, col] != 0:
         row -= 1
 
+    print("get_place func - ", row, col)
     return row, col
-
-
-def get_col():
-    col = None
-    while col is None:
-        col = input("choose col (or e to exit): ")
-        if col == "e" or col == "E":
-            return "E"
-        else:
-            try:
-                col = int(col)
-            except ValueError:
-                print("invalid input. try again")
-                col = None
-    return col
-
-
-def check_col(board, col):
-    if col >= board.shape[1] or col < 0:
-        return False
-
-    return board[0, col] == 0
 
 
 def check_board(BOARD):

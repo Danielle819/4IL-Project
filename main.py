@@ -164,6 +164,9 @@ if __name__ == '__main__':
     set_cell_map()
     print(cell_map)
 
+    enabled_columns = [0, 1, 2, 3, 4, 5, 6]
+    print(enabled_columns)
+
 
 
 

@@ -9,9 +9,6 @@ class Board:
     def choose_cell(self, p, place):
         self.board[place] = p
 
-    def get_board(self):
-        return str(self.board)
-
     def set_winner(self, player):
         self.winner = player
 

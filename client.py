@@ -1,5 +1,5 @@
 # GUI IMPORTS
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -12,10 +12,11 @@ import socket
 import threading
 from threading import *
 # HELPER MODULES
+from cryptography.fernet import Fernet
+import base64
 import numpy as np
 import random
 import sys
-import time
 
 
 # SOCKETS SETUP
@@ -34,6 +35,9 @@ cell_map = {}
 client_username, client_password, client_score = "", "", 0
 # SEMAPHORE LOCKS
 edit_invitations_list = Semaphore()
+# ENCRYPTION
+ENC_KEY = base64.urlsafe_b64encode(b"Madadaremoshiranaikaodewaraukimg")
+FERNET = Fernet(ENC_KEY)
 
 
 # HELPER SOCKET METHODS
@@ -49,10 +53,8 @@ def build_and_send_message(code, msg, sock=client_socket):
     try:
         sock.send(message.encode())
         print("----build_and_send_message - sent:", message)
-        # print("----build_and_send_message - sent:", message)
     except:
         if logging_out:
-            # print("build_and_send_message func PASS")
             pass
         else:
             print("build_and_send_message func END")
@@ -101,23 +103,6 @@ def build_send_recv_parse(cmd, data, settimeout=0, sock=client_socket):
 
 # OTHER HELPER METHODS
 
-def recv_and_print_board(settimeout=0):
-    cmd, data = recv_message_and_parse(settimeout)
-    if cmd != commprot.SERVER_CMD["updated_board_msg"]:
-        try:
-            print(commprot.DATA_MESSAGES[data])
-        except KeyError:
-            print("recv_and_print_board error:", cmd, data)
-        return None
-    # if cmd != commprot.SERVER_CMD["updated_board_msg"]:
-    #     print("something went wrong")
-    #     return None
-    board = commprot.string_to_board(data)
-    print("\n")
-    print(board, "\n")
-    return board
-
-
 def set_cell_map():
     x = 190
     for col in range(7):
@@ -141,11 +126,11 @@ class WelcomeScreen(QDialog):
 
     # USER COMMANDS FUNCTIONS
     def loginscreen(self):
-        login_screen.set_fields()
+        login_screen.reset_fields()
         widget.setCurrentIndex(1)
 
     def signupscreen(self):
-        signup_screen.set_fields()
+        signup_screen.reset_fields()
         widget.setCurrentIndex(2)
 
 
@@ -163,7 +148,7 @@ class LoginScreen(QDialog):
         self.showhidepasswordbutton.clicked.connect(self.show_hide_password)
 
     # APPEARANCE FUNCTIONS
-    def set_fields(self):
+    def reset_fields(self):
         self.usernamefield.setText("")
         self.passwordfield.setText("")
 
@@ -187,12 +172,21 @@ class LoginScreen(QDialog):
             self.errorlabel.setText("Please fill all fields")
             return
 
-        # client_socket = socket.socket()
-        # client_socket.connect((IP, PORT))
-        # print("peer id:", client_socket.getpeername())
-        # time.sleep(2)
+        encMessage = FERNET.encrypt((username + "#" + password).encode()).decode()
+        if len(encMessage) <= commprot.MAX_DATA_LENGTH:
+            response, _ = build_send_recv_parse(commprot.CLIENT_CMD["login_fin_msg"], encMessage)
+        else:
+            bit_len = commprot.MAX_DATA_LENGTH
+            data_len = len(encMessage)
+            rem = data_len % bit_len
+            wholes = data_len - rem
+            messages = [encMessage[i: i + bit_len] for i in range(0, wholes, bit_len)]
+            messages.append(encMessage[-rem:])
 
-        response, _ = build_send_recv_parse(commprot.CLIENT_CMD["login_msg"], username + "#" + password)
+            for i in range(len(messages) - 1):
+                build_and_send_message(commprot.CLIENT_CMD["login_part_msg"], messages[i])
+            response, _ = build_send_recv_parse(commprot.CLIENT_CMD["login_fin_msg"], messages[-1])
+
         if response == commprot.SERVER_CMD["error_msg"]:
             self.errorlabel.setText(commprot.DATA_MESSAGES[_])
             return
@@ -205,9 +199,7 @@ class LoginScreen(QDialog):
             print("login func:", response, _)
             return
 
-        global listen_socket
-        global server_socket
-        global listen
+        global listen_socket, server_socket, listen
         # setting up listening socket
         hostname = socket.gethostname()
         ipadd = socket.gethostbyname(hostname)
@@ -217,7 +209,6 @@ class LoginScreen(QDialog):
         listen_socket.listen(1)
 
         response, _ = "", ""
-        # server_socket = None
         build_and_send_message(commprot.CLIENT_CMD["my_address_msg"], ipadd + "#" + str(port))
         server_socket, add = listen_socket.accept()
         response, _ = recv_message_and_parse()
@@ -226,8 +217,6 @@ class LoginScreen(QDialog):
             return
         elif response == commprot.SERVER_CMD["success_msg"]:
             print("server connected successfully")
-            # listen_th = threading.Thread(target=self.receive_invitation)
-            # listen_th.start()
             self.set_next_windows()
             self.receive_updates()
 
@@ -309,7 +298,7 @@ class SignupScreen(QDialog):
         self.gobackbutton.clicked.connect(self.goback)
 
     # APPEARANCE FUNCTIONS
-    def set_fields(self):
+    def reset_fields(self):
         self.usernamefield.setText("")
         self.passwordfield.setText("")
         self.confirmpasswordfield.setText("")
@@ -329,18 +318,32 @@ class SignupScreen(QDialog):
             self.messagelabel.setStyleSheet("font: 10pt 'MS Shell Dlg 2'; color: rgb(255, 0, 0);")
             return
 
-        response, _ = build_send_recv_parse(commprot.CLIENT_CMD["signup_msg"], username + "#" + password)
+        encMessage = FERNET.encrypt((username + "#" + password).encode()).decode()
+        if len(encMessage) <= commprot.MAX_DATA_LENGTH:
+            response, _ = build_send_recv_parse(commprot.CLIENT_CMD["signup_fin_msg"], encMessage)
+        else:
+            bit_len = commprot.MAX_DATA_LENGTH
+            data_len = len(encMessage)
+            rem = data_len % bit_len
+            wholes = data_len - rem
+            messages = [encMessage[i: i + bit_len] for i in range(0, wholes, bit_len)]
+            messages.append(encMessage[-rem:])
+
+            for i in range(len(messages) - 1):
+                build_and_send_message(commprot.CLIENT_CMD["signup_part_msg"], messages[i])
+            response, _ = build_send_recv_parse(commprot.CLIENT_CMD["signup_fin_msg"], messages[-1])
+
         if response == commprot.SERVER_CMD["error_msg"]:
             self.messagelabel.setText(commprot.DATA_MESSAGES[_])
             self.messagelabel.setStyleSheet("font: 10pt 'MS Shell Dlg 2'; color: rgb(255, 0, 0);")
         elif response == commprot.SERVER_CMD["success_msg"]:
             self.messagelabel.setText("You have signed up successfully. Now log in")
             self.messagelabel.setStyleSheet("font: 10pt 'MS Shell Dlg 2'; color: rgb(117, 104, 104);")
-            print("You signed up successfully!")
         else:
             print("signup func:", response, _)
 
     def goback(self):
+        self.messagelabel.hide()
         widget.setCurrentIndex(0)
 
 
@@ -376,19 +379,9 @@ class MainMenu(QDialog):
         widget.setCurrentIndex(7)
 
     def topten(self):
-        # global topten_screen
-        # widget.setCurrentIndex(5)
-        # widget.removeWidget(widget.currentWidget())
-        # topten_screen = TopTenScreen()
-        # widget.insertWidget(5, topten_screen)
         widget.setCurrentIndex(5)
 
     def friendsmenu(self):
-        # global friends_menu
-        # widget.setCurrentIndex(6)
-        # widget.removeWidget(widget.currentWidget())
-        # friends_menu = FriendsMenu()
-        # widget.insertWidget(6, friends_menu)
         widget.setCurrentIndex(6)
 
     def logout(self):
@@ -403,39 +396,24 @@ class EditUserScreen(QDialog):
         # COMPLETING APPEARANCE
         self.usernamelabel.setText("username: " + client_username)
         self.passwordlabel.setText("password: " + client_password)
-        self.editusernamebutton.hide()
         self.hide_editors()
         self.username_hidden = True
         self.password_hidden = True
         # DEFINING BUTTONS
-        # self.editusernamebutton.clicked.connect(self.show_hide_edit_username)
         self.editpasswordbutton.clicked.connect(self.show_hide_edit_password)
-        # self.usernamesavebutton.clicked.connect(lambda: self.change_info("username"))
-        self.passwordsavebutton.clicked.connect(lambda: self.change_info("password"))
+        self.passwordsavebutton.clicked.connect(self.change_info)
         self.gobackbutton.clicked.connect(self.goback)
 
     # APPEARANCE FUNCTIONS
     def hide_editors(self):
-        self.usernameminilabel.hide()
         self.passwordminilabel.hide()
         self.upfield.hide()
-        self.confirmusernamelabel.hide()
         self.confirmpasswordlabel.hide()
         self.confirmupfield.hide()
-        self.usernamesavebutton.hide()
         self.passwordsavebutton.hide()
         self.messagelabel.setText("")
         self.username_hidden = True
         self.password_hidden = True
-
-    def show_edit_username(self):
-        self.usernameminilabel.show()
-        self.upfield.show()
-        self.upfield.clear()
-        self.confirmusernamelabel.show()
-        self.confirmupfield.show()
-        self.confirmupfield.clear()
-        self.usernamesavebutton.show()
 
     def show_edit_password(self):
         self.passwordminilabel.show()
@@ -445,16 +423,6 @@ class EditUserScreen(QDialog):
         self.confirmupfield.show()
         self.confirmupfield.clear()
         self.passwordsavebutton.show()
-
-    def show_hide_edit_username(self):
-        if self.username_hidden:
-            if not self.password_hidden:
-                self.hide_editors()
-            self.show_edit_username()
-            self.username_hidden = False
-        else:
-            self.hide_editors()
-            self.username_hidden = True
 
     def show_hide_edit_password(self):
         if self.password_hidden:
@@ -467,36 +435,31 @@ class EditUserScreen(QDialog):
             self.password_hidden = True
 
     # USER COMMANDS FUNCTIONS
-    def change_info(self, type):
+    def change_info(self):
         up = self.upfield.text()
         confirmup = self.confirmupfield.text()
 
         if len(up) == 0 or len(confirmup) == 0:
             self.messagelabel.setText("Please fill all fields")
+            self.messagelabel.setStyleSheet("font: 10pt 'MS Shell Dlg 2'; color: rgb(255, 0, 0);")
             return
         elif up != confirmup:
-            if type == "username":
-                self.messagelabel.setText("Username and Confirm username fields must be identical")
-            else:
-                self.messagelabel.setText("Password and Confirm password fields must be identical")
+            self.messagelabel.setText("Password and Confirm password fields must be identical")
+            self.messagelabel.setStyleSheet("font: 10pt 'MS Shell Dlg 2'; color: rgb(255, 0, 0);")
             return
 
-        response, _ = build_send_recv_parse(commprot.CLIENT_CMD[f"change_{type}_msg"], up)
+        response, _ = build_send_recv_parse(commprot.CLIENT_CMD[f"change_password_msg"], up)
         if response == commprot.SERVER_CMD["error_msg"]:
             self.messagelabel.setText(commprot.DATA_MESSAGES[_])
+            self.messagelabel.setStyleSheet("font: 10pt 'MS Shell Dlg 2'; color: rgb(255, 0, 0);")
         elif response == commprot.SERVER_CMD["success_msg"]:
-            self.messagelabel.setText(f"You have changed your {type} successfully")
-            print(f"You have changed your {type} successfully!")
-            if type == "username":
-                global client_username
-                client_username = up
-                self.usernamelabel.setText("username: " + client_username)
-            else:
-                global client_password
-                client_password = up
-                self.passwordlabel.setText("password: " + client_password)
+            self.messagelabel.setText(f"You have changed your password successfully")
+            self.messagelabel.setStyleSheet("font: 10pt 'MS Shell Dlg 2'; color: rgb(117, 104, 104);")
+            global client_password
+            client_password = up
+            self.passwordlabel.setText("password: " + client_password)
         else:
-            print("change_username func:", response, _)
+            print("change_info func:", response, _)
 
     def goback(self):
         widget.setCurrentIndex(3)
@@ -1095,11 +1058,17 @@ class InvitationsMenu(QDialog):
             self.statuslabel.setText("Press send to invite friend to play")
 
     def disable_buttons(self):
+        self.sendbutton.setEnabled(False)
+        self.closebutton.setEnabled(False)
+        self.gobackbutton.setEnabled(False)
         for i in range(len(self.buttons1)):
             self.buttons1[i].setEnabled(False)
             self.buttons2[i].setEnabled(False)
 
     def enable_buttons(self):
+        self.sendbutton.setEnabled(True)
+        self.closebutton.setEnabled(True)
+        self.gobackbutton.setEnabled(True)
         for i in range(len(self.buttons1)):
             self.buttons1[i].setEnabled(True)
             self.buttons2[i].setEnabled(True)
@@ -1161,19 +1130,10 @@ class InvitationsMenu(QDialog):
         self.waiting_thread.start()
 
         # additional resets
-        self.sendbutton.setEnabled(False)
-        self.closebutton.setEnabled(False)
-        self.gobackbutton.setEnabled(False)
         self.disable_buttons()
-        # self.closebutton.clicked.connect(lambda: self.remove_invitation(closebutton=True))
-        # self.gobackbutton.clicked.connect(lambda: self.remove_invitation(gobackbutton=True))
+
         # after worker finishes resets
-        self.waiting_thread.finished.connect(lambda: self.sendbutton.setEnabled(True))
-        self.waiting_thread.finished.connect(lambda: self.closebutton.setEnabled(True))
-        self.waiting_thread.finished.connect(lambda: self.gobackbutton.setEnabled(True))
         self.waiting_thread.finished.connect(lambda: self.enable_buttons())
-        # self.waiting_thread.finished.connect(lambda: self.closebutton.clicked.connect(self.hide_invite_to_play))
-        # self.waiting_thread.finished.connect(lambda: self.gobackbutton.clicked.connect(self.goback))
 
     def accept_invitation(self):
         button_name = self.sender().objectName()
@@ -1251,7 +1211,6 @@ class GameRoom(QDialog):
         # parameters for gui
         self.columns = []
         self.bin_board = None
-        # self.added_circles = []
         self.ui_board = []
         self.column = -1
         self.enabled_columns = [0, 1, 2, 3, 4, 5, 6]
@@ -1275,12 +1234,13 @@ class GameRoom(QDialog):
             self.your_color = "154, 133, 143"
             self.alternate_your_color = "144, 124, 134"
 
-        # self.animated_circle.setStyleSheet("border-radius:35px;"
-        #                                    "background-color: rgb("+self.alternate_your_color+");"
-        #                                    "border: 10px solid  rgb("+self.your_color+");")
-        # self.animated_circle.hide()
-        # self.animation = QPropertyAnimation(self.animated_circle, b"geometry")
-        # self.animation.setDuration(600)
+        self.animated_circle.setStyleSheet("border-radius:35px;"
+                                           "background-color: rgb("+self.alternate_your_color+");"
+                                           "border: 10px solid  rgb("+self.your_color+");")
+        self.animated_circle.hide()
+        self.animation = QPropertyAnimation(self.animated_circle, b"geometry")
+        self.animation.setDuration(800)
+        self.animation.setEasingCurve(QEasingCurve.OutBounce)
 
         play_th = threading.Thread(target=self.play)
         play_th.daemon = True
@@ -1384,49 +1344,35 @@ class GameRoom(QDialog):
             self.columns[i].setEnabled(True)
 
     def choose_column(self):
-        print("got player's choice")
         self.column = int(self.sender().objectName()[6])
-        print(self.column)
         place = game.get_place(self.bin_board, self.column)
-        print(self.bin_board)
-        print("place:", place)
         self.drop_circle(place)
 
-    def drop_circle(self, place, your_turn=True):
+    def drop_circle(self, place):
         row, col = place[0], place[1]
         ax, ay = cell_map[str(col) + str(row)]["X"], cell_map[str(col) + str(row)]["Y"]
-        if your_turn:
-            # self.added_circles[row][col] = QtWidgets.QLabel(self)
-            # self.added_circles[row][col].setGeometry(ax, 0, 70, 70)
-            # self.added_circles[row][col].setStyleSheet("border-radius:35px;"
-            #                                            "background-color: rgb("+self.alternate_your_color+");"
-            #                                            "border: 10px solid  rgb("+self.your_color+");")
-            # self.added_circles[row][col].raise_()
-            # self.added_circles[row][col].show()
+        if self.your_turn_ind:
+            self.animated_circle.setGeometry(ax, 0, 70, 70)
+            self.animated_circle.show()
+            self.animated_circle.raise_()
 
-            # self.animated_circle.setGeometry(ax, 0, 70, 70)
-            # self.animated_circle.show()
-            # self.animated_circle.raise_()
-            # self.animation = QPropertyAnimation(self.animated_circle, b"geometry")
-            # self.animation.setDuration(600)
-            # self.animation.setEasingCurve(QEasingCurve.OutBounce)
-            # self.animation.setStartValue(QRect(ax, 0, 70, 70))
-            # self.animation.setEndValue(QRect(ax, ay, 70, 70))
-            # self.animation.start()
-            # self.last_row, self.last_col = row, col
+            self.animation.setStartValue(QRect(ax, 0, 70, 70))
+            self.animation.setEndValue(QRect(ax, ay, 70, 70))
+            self.animation.start()
+            self.last_row, self.last_col = row, col
 
-            self.ui_board[row][col].setStyleSheet("border-radius:35px; "
-                                                                      "background-color: rgb(" + self.alternate_your_color + ");"
-                                                                    "border: 10px solid  rgb(" + self.your_color + ");")
+            # self.ui_board[row][col].setStyleSheet("border-radius:35px;"
+            #                                     "background-color: rgb(" + self.alternate_your_color + ");"
+            #                                     "border: 10px solid  rgb(" + self.your_color + ");")
         else:
             self.ui_board[row][col].setStyleSheet("border-radius:35px; "
                                                   "background-color: rgb("+self.alternate_other_color+");"
                                                   "border: 10px solid  rgb("+self.other_color+");")
-            # if self.last_row is not None:
-            #     self.ui_board[self.last_row][self.last_col].setStyleSheet("border-radius:35px; "
-            #                                                               "background-color: rgb("+self.alternate_your_color+");"
-            #                                                               "border: 10px solid  rgb("+self.your_color+");")
-            #     self.animated_circle.hide()
+            if self.last_row is not None:
+                self.ui_board[self.last_row][self.last_col].setStyleSheet("border-radius:35px; "
+                                                                          "background-color: rgb("+self.alternate_your_color+");"
+                                                                          "border: 10px solid  rgb("+self.your_color+");")
+                self.animated_circle.hide()
 
         if row == 0:
             self.columns[col].setEnabled(False)
@@ -1462,8 +1408,6 @@ class GameRoom(QDialog):
     def play(self):
         self.instructionslabel.setText("Waiting for another player to join the game room...")
 
-        self.create_bin_board()
-
         # receiving other player's username from server
         cmd, other_player = recv_message_and_parse()
         if cmd != commprot.SERVER_CMD["other_player_msg"] or self.exited:
@@ -1485,7 +1429,7 @@ class GameRoom(QDialog):
         self.game_started = True
         self.instructionslabel.setText("")
         self.idlabel.hide()
-        # self.create_added_circles()
+        self.create_bin_board()
         self.create_ui_board()
         self.connect_buttons()
         while cmd != commprot.SERVER_CMD["game_over_msg"] and cmd != commprot.SERVER_CMD["error_msg"] and cmd is not None:
@@ -1520,19 +1464,20 @@ class GameRoom(QDialog):
                     print("play func - player exited, thread done")
                     return
                 if cmd != commprot.SERVER_CMD["other_cell_msg"]:
-                    print("play func - receiving other cell error:", cmd, place)
                     self.error_occurred(place)
+                    print("play func - receiving other cell error:", cmd, place)
                     print("play func - thread done")
                     return
-                print("OTHER PLAYER CHOSE:", place)
+
                 place = (int(place[0]), int(place[2]))
-                self.drop_circle(place, False)
+                self.drop_circle(place)
                 self.bin_board[place[0], place[1]] = 2
+
             cmd, status = recv_message_and_parse()
 
         if cmd == commprot.SERVER_CMD["error_msg"] or cmd is None:
-            print("play func - error", commprot.DATA_MESSAGES[status])
             self.error_occurred(status)
+            print("play func - error", commprot.DATA_MESSAGES[status])
             print("play func - thread done")
             return
 
@@ -1577,18 +1522,11 @@ class GameRoom(QDialog):
             self.exited = True
             if self.ID != "":
                 build_and_send_message(commprot.CLIENT_CMD["exit_room_msg"], self.ID)
-            elif self.invitation:
-                build_and_send_message(commprot.CLIENT_CMD["exit_room_msg"], "invitation")
             else:
                 build_and_send_message(commprot.CLIENT_CMD["exit_room_msg"], "open")
         self.goback()
 
     def goback(self):
-        print("enter goback")
-        # widget.setCurrentIndex(7)
-
-        # global main_menu, edit_user_screen, topten_screen, friends_menu, play_menu, invitations_menu
-
         if self.update_score:
             global main_menu, edit_user_screen, topten_screen, friends_menu, play_menu, invitations_menu
             main_menu.set_score()
@@ -1596,12 +1534,7 @@ class GameRoom(QDialog):
             friends_menu.set_score()
             play_menu.set_score()
             invitations_menu.set_score()
-
         widget.setCurrentIndex(7)
-        # widget.removeWidget(widget.currentWidget())
-        # play_menu = PlayMenu()
-        # widget.insertWidget(7, play_menu)
-        # widget.setCurrentIndex(7)
 
 
 # QTHREADS WORKERS
@@ -1626,6 +1559,7 @@ class UpdatesReceiver(QObject):
                     invitations.append(data)
                     edit_invitations_list.release()
                     self.invitation_received.emit(data)
+
                 elif cmd == commprot.SERVER_CMD["remove_invitation_msg"]:
                     edit_invitations_list.acquire()
                     try:
@@ -1636,10 +1570,13 @@ class UpdatesReceiver(QObject):
                         print("\n", data, "has removed their playing invitation to you")
                         self.invitation_removed.emit()
                     edit_invitations_list.release()
+
                 elif cmd == commprot.SERVER_CMD["topten_updated_msg"]:
                     self.topten_updated.emit()
+
                 elif cmd == commprot.SERVER_CMD["friends_updated_msg"]:
                     self.friends_updated.emit()
+
                 else:
                     build_and_send_message("", "", sock=server_socket)
 
@@ -1653,11 +1590,11 @@ class UpdatesReceiver(QObject):
 
 
 class AnswerWaitingWorker(QObject):
-    finished = pyqtSignal(name="finished")
     accepted = pyqtSignal(name="accepted")
     rejected = pyqtSignal(name="rejected")
     not_answered = pyqtSignal(name="not_answered")
     error = pyqtSignal(str, name="error")
+    finished = pyqtSignal(name="finished")
 
     def run(self):
         print("waiting for response...")
@@ -1861,6 +1798,8 @@ widget.insertWidget(1, login_screen)
 widget.insertWidget(2, signup_screen)
 widget.setFixedHeight(600)
 widget.setFixedWidth(1000)
+widget.setWindowTitle("4IL")
+widget.setWindowIcon(QtGui.QIcon('pictures\\LOGO.png'))
 widget.show()
 
 try:

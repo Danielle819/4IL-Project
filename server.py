@@ -7,10 +7,11 @@ import select
 import threading
 from threading import *
 # HELPER MODULES
+from cryptography.fernet import Fernet
+import base64
 import random
 import string
 import time
-# from colorama import Fore, Style
 
 # GLOBALS
 users = {}  # username: {password: _, score: _}
@@ -18,7 +19,6 @@ friends = {}  # username: {friends: _, pending_requests: _, sent_requests: _}
 topten = []  # (username, score)
 logged_users = {}  # client_socket.getpeername(): username
 user_sockets = {}  # username: socket
-# messages_to_send = []  # (socket, message)
 not_playing_clients = []  # client_socket
 playing_clients = []  # client_socket
 waiting_id_rooms = {}  # id : (waiting) client_socket
@@ -29,13 +29,15 @@ write_lock = Semaphore()  # lock for updating database
 edit_logged_users = Semaphore()  # lock for editing the logged_users dict
 edit_playing_lists = Semaphore()  # lock for editing the not_playing_clients and playing_clients lists
 edit_waiting_invitations = Semaphore()
+# ENCRYPTION
+ENC_KEY = base64.urlsafe_b64encode(b"Madadaremoshiranaikaodewaraukimg")
+FERNET = Fernet(ENC_KEY)
 
 
 # HELPER SOCKET METHODS
 
-def build_and_send_message(conn, cmd, msg, direct=False):
+def build_and_send_message(conn, cmd, msg):
     message = commprot.build_message(cmd, str(msg))
-    # print(Fore.GREEN + "build_and_send_message - sent:", message + Style.RESET_ALL)
     try:
         conn.send(message.encode())
         print("----build_and_send_message - SENT:", message)
@@ -59,32 +61,27 @@ def recv_message_and_parse(conn, settimeout=0):
     if message == "":
         print("----recv_message_and_parse - GOT: EMPTY MESSAGE")
         return "", ""
-    # print(Fore.CYAN + "----recv_message_and_parse - message:", message + Style.RESET_ALL)
     print("----recv_message_and_parse - GOT:", message)
     cmd, msg = commprot.parse_message(message)
-    # print(Fore.CYAN + "----recv_message_and_parse - commprot parsed:", cmd, "|", msg + Style.RESET_ALL)
-    print("----recv_message_and_parse - commprot parsed:", cmd, ",", msg)
+    # print("----recv_message_and_parse - commprot parsed:", cmd, ",", msg)
     return cmd, msg
 
 
-# OTHER HELPER METHODS
-
-def send_success(conn, msg='', direct=False):
+def send_success(conn, msg=''):
     """
     sends success message with given message
     """
-    build_and_send_message(conn, "SUCCESS", msg, direct)
+    build_and_send_message(conn, "SUCCESS", msg)
 
 
-def send_error(conn, error_msg='', direct=False):
+def send_error(conn, error_msg=''):
     """
     Send error message with given message
-
     """
-    build_and_send_message(conn, "ERROR", error_msg, direct)
+    build_and_send_message(conn, "ERROR", error_msg)
 
 
-def send_longer_message(conn, cmd, data, direct=False):
+def send_longer_message(conn, cmd, data):
     bit_len = commprot.MAX_DATA_LENGTH
     data_len = len(data)
     rem = data_len % bit_len
@@ -93,12 +90,11 @@ def send_longer_message(conn, cmd, data, direct=False):
     messages.append(data[-rem:])
 
     for i in range(len(messages) - 1):
-        # print("sent", i, "out of", len(messages) - 1)
-        build_and_send_message(conn, commprot.SERVER_CMD[cmd + "_part_msg"], messages[i], direct)
-    # print("sending final msg")
-    build_and_send_message(conn, commprot.SERVER_CMD[cmd + "_fin_msg"], messages[-1], direct)
-    # print("done")
+        build_and_send_message(conn, commprot.SERVER_CMD[cmd + "_part_msg"], messages[i])
+    build_and_send_message(conn, commprot.SERVER_CMD[cmd + "_fin_msg"], messages[-1])
 
+
+# OTHER HELPER METHODS
 
 def set_topten():
     global users, topten
@@ -117,31 +113,26 @@ def create_id():
     return ''.join(random.choice(chars) for _ in range(6))
 
 
-def send_players_board(players, board):
-    str_board = commprot.board_to_string(board.board)
-    return send_both_players(players[0], players[1], commprot.SERVER_CMD["updated_board_msg"], str_board, str_board)
-
-
 def send_both_players(player1, player2, cmd, msg1, msg2):
-    if not build_and_send_message(player1, cmd, msg1, True):
+    if not build_and_send_message(player1, cmd, msg1):
         print("send_both_players func sent error")
-        build_and_send_message(player2, commprot.SERVER_CMD["error_msg"], "other_player_disconnected", True)
+        send_error(player2, "other_player_disconnected")
         return False
-    if not build_and_send_message(player2, cmd, msg2, True):
+    if not build_and_send_message(player2, cmd, msg2):
         print("send_both_players func sent error")
-        build_and_send_message(player1, commprot.SERVER_CMD["error_msg"], "other_player_disconnected", True)
+        send_error(player1, "other_player_disconnected")
         return False
     return True
 
 
 def send_to_players(player1, player2, cmd1, cmd2, msg1, msg2):
-    if not build_and_send_message(player1, cmd1, msg1, True):
+    if not build_and_send_message(player1, cmd1, msg1):
         print("send_to_players func sent error")
-        build_and_send_message(player2, commprot.SERVER_CMD["error_msg"], "other_player_disconnected", True)
+        send_error(player2, "other_player_disconnected")
         return False
-    if not build_and_send_message(player2, cmd2, msg2, True):
+    if not build_and_send_message(player2, cmd2, msg2):
         print("send_to_players func sent error")
-        build_and_send_message(player1, commprot.SERVER_CMD["error_msg"], "other_player_disconnected", True)
+        send_error(player1, "other_player_disconnected")
         return False
     return True
 
@@ -149,22 +140,21 @@ def send_to_players(player1, player2, cmd1, cmd2, msg1, msg2):
 def players_turn(board, player1, player2, turn):
     if not send_both_players(player1, player2, commprot.SERVER_CMD["status_msg"],
                              "your_turn", "not_your_turn"):
-        return "A player disconnected", ""
+        return False, None
 
-    # print("players_turn func - waiting for player's choice...")
     cmd, choice = recv_message_and_parse(player1)
     if cmd == commprot.CLIENT_CMD["exit_room_msg"]:
         send_success(player1)
-        send_error(player2, "other_player_exited", direct=True)
-        return "A player exited the room", ""
+        send_error(player2, "other_player_exited")
+        return False, None
     elif cmd == commprot.CLIENT_CMD["choose_cell_msg"]:
         place = (int(choice[0]), int(choice[2]))
         board.choose_cell(turn, place)
-        return "GAME ON", choice
+        return True, choice
     else:
         print("a player disconnected")
-        send_error(player2, "other_player_disconnected", direct=True)
-        return "A player disconnected", ""
+        send_error(player2, "other_player_disconnected")
+        return False, None
 
 
 def update_players_score(username, turns):
@@ -191,23 +181,23 @@ def update_players_score(username, turns):
     return score
 
 
-def update_database(tb, user, new_user=False, un_cng=False):
+def update_database(tb, user, new_user=False):
     """
     function creates the thread that actually edits the database
     """
-    updatedb_th = threading.Thread(target=update_database_target, args=[tb, user, new_user, un_cng])
+    updatedb_th = threading.Thread(target=update_database_target, args=[tb, user, new_user])
     updatedb_th.start()
     updatedb_th.join()
 
 
-def update_database_target(tb, user, new_user=False, un_cng=False):
+def update_database_target(tb, user, new_user=False):
     global users, friends, write_lock
 
     write_lock.acquire()
     if tb == "users":
-        commprot.update_database(tb, users, user, new_user, un_cng)
+        commprot.update_database(tb, users, user, new_user)
     elif tb == "friends":
-        commprot.update_database(tb, friends, user, new_user, un_cng)
+        commprot.update_database(tb, friends, user, new_user)
     write_lock.release()
 
 
@@ -221,25 +211,24 @@ def handle_client_message(conn, cmd, data):
     global logged_users
 
     if conn.getpeername() not in logged_users:
-        if cmd == "LOGIN":
-            username = data.split("#")[0]
-            if username not in logged_users.values():
-                handle_login(conn, data)
-            else:
-                send_error(conn, "user_logged_in")
+        if cmd == commprot.CLIENT_CMD["login_fin_msg"]:
+            handle_short_login(conn, data)
             return
-        elif cmd == "SIGNUP":
-            handle_signup(conn, data)
+        elif cmd == commprot.CLIENT_CMD["login_part_msg"]:
+            handle_long_login(conn, data)
+            return
+        if cmd == commprot.CLIENT_CMD["signup_fin_msg"]:
+            handle_short_signup(conn, data)
+            return
+        elif cmd == commprot.CLIENT_CMD["signup_part_msg"]:
+            handle_long_signup(conn, data)
             return
         else:
             send_error(conn, "user_not_connected")
             return
 
-    # print("handle_client_message func - ", cmd)
     if cmd == commprot.CLIENT_CMD["logout_msg"]:
         handle_logout(conn)
-    # elif cmd == commprot.CLIENT_CMD["change_username_msg"]:
-    #     handle_change_username(conn, data)
     elif cmd == commprot.CLIENT_CMD["change_password_msg"]:
         handle_change_password(conn, data)
     elif cmd == commprot.CLIENT_CMD["create_id_room_msg"]:
@@ -290,10 +279,34 @@ def handle_client_message(conn, cmd, data):
         send_error(conn, "unrecognized_command")
 
 
+def handle_long_login(conn, data):
+    edit_playing_lists.acquire()
+    not_playing_clients.remove(conn)
+    edit_playing_lists.release()
+    encMessage = data
+    cmd = ""
+    while cmd != commprot.CLIENT_CMD["login_fin_msg"]:
+        cmd, msg = recv_message_and_parse(conn)
+        encMessage += msg
+    edit_playing_lists.acquire()
+    not_playing_clients.append(conn)
+    edit_playing_lists.release()
+    handle_short_login(conn, encMessage)
+
+
+def handle_short_login(conn, data):
+    decMessage = FERNET.decrypt(data.encode()).decode()
+    handle_login(conn, decMessage)
+
+
 def handle_login(conn, data):
     global users, logged_users
 
     username, password = data.split("#")
+
+    if username in logged_users.values():
+        send_error(conn, "user_logged_in")
+        return
 
     if username not in users:
         send_error(conn, "username_not_registered")
@@ -303,7 +316,7 @@ def handle_login(conn, data):
         return
 
     logged_users[conn.getpeername()] = username
-    send_success(conn, direct=True)
+    send_success(conn)
 
     # connecting to client's listening socket
     cmd, data = recv_message_and_parse(conn)
@@ -363,7 +376,7 @@ def handle_logout(conn):
             except KeyError:
                 print("handle_logout func - in waiting invitations, other player not in user_sockets")
             else:
-                build_and_send_message(other_user_socket, commprot.SERVER_CMD["remove_invitation_msg"], username, direct=True)
+                build_and_send_message(other_user_socket, commprot.SERVER_CMD["remove_invitation_msg"], username)
         elif conn is wait_inv[3]:
             other_conn = wait_inv[1]
             wait_inv_to_remove.append(wait_inv)
@@ -402,6 +415,26 @@ def handle_logout(conn):
     print(f"Connection with client {p_id} closed.")
 
 
+def handle_long_signup(conn, data):
+    edit_playing_lists.acquire()
+    not_playing_clients.remove(conn)
+    edit_playing_lists.release()
+    encMessage = data
+    cmd = ""
+    while cmd != commprot.CLIENT_CMD["signup_fin_msg"]:
+        cmd, msg = recv_message_and_parse(conn)
+        encMessage += msg
+    edit_playing_lists.acquire()
+    not_playing_clients.append(conn)
+    edit_playing_lists.release()
+    handle_short_signup(conn, encMessage)
+
+
+def handle_short_signup(conn, data):
+    decMessage = FERNET.decrypt(data.encode()).decode()
+    handle_signup(conn, decMessage)
+
+
 def handle_signup(conn, data):
     global users, friends
 
@@ -422,41 +455,6 @@ def handle_signup(conn, data):
     friends[username] = {"friends": '', "pending_requests": '', "sent_requests": ''}
     update_database("friends", username, new_user=True)
     send_success(conn)
-
-
-# def handle_change_username(conn, data):
-#     global users, logged_users, user_sockets
-#
-#     try:
-#         old_username = logged_users[conn.getpeername()]
-#     except KeyError:
-#         print("handle_change_username func - client was not logged")
-#         handle_logout(conn)
-#         return
-#     new_username = data
-#
-#     if new_username == old_username:
-#         send_error(conn, "its_current_username")
-#         return
-#     if new_username in users.keys():
-#         send_error(conn, "username_taken")
-#         return
-#     if len(new_username) < 6 or len(new_username) > 20 or not new_username.isalnum():
-#         send_error(conn, "username_restrictions")
-#         return
-#
-#     users[new_username] = users[old_username]
-#     users.pop(old_username)
-#     update_database("users", user=(old_username, new_username), un_cng=True)
-#     logged_users[conn.getpeername()] = new_username
-#     try:
-#         user_socket = user_sockets[old_username]
-#     except KeyError:
-#         print("handle_change_username func - old username was not in user_sockets")
-#     else:
-#         user_sockets.pop(old_username)
-#         user_sockets[new_username] = user_socket
-#     send_success(conn)
 
 
 def handle_change_password(conn, data):
@@ -509,7 +507,7 @@ def handle_join_id_room(conn, ID):
     if ID not in waiting_id_rooms:
         build_and_send_message(conn, commprot.SERVER_CMD["error_msg"], "id_not_found")
         return
-    send_success(conn, direct=True)
+    send_success(conn)
 
     other_player = waiting_id_rooms[ID]
     waiting_id_rooms.pop(ID)
@@ -570,7 +568,7 @@ def handle_join_open_room(conn):
     if len(waiting_open_rooms) == 0:
         send_error(conn, "no_open_rooms")
         return
-    send_success(conn, direct=True)
+    send_success(conn)
 
     other_player = waiting_open_rooms[0]
     waiting_open_rooms.remove(other_player)
@@ -674,7 +672,7 @@ def handle_invite_to_play(conn, data):
         send_error(conn, "invitation_not_sent")
         return
 
-    build_and_send_message(user_socket, commprot.SERVER_CMD["playing_invitation_msg"], username, direct=True)
+    build_and_send_message(user_socket, commprot.SERVER_CMD["playing_invitation_msg"], username)
     response, _ = recv_message_and_parse(user_socket, settimeout=20)
     # if invitation was not received properly:
     if response != commprot.CLIENT_CMD["invitation_received_msg"]:
@@ -709,8 +707,8 @@ def handle_accept_invitation(conn, data):
         send_error(conn, "other_player_disconnected")
         return
 
-    send_success(conn, direct=True)
-    build_and_send_message(other_conn, commprot.SERVER_CMD["invitation_accepted_msg"], "", direct=True)
+    send_success(conn)
+    build_and_send_message(other_conn, commprot.SERVER_CMD["invitation_accepted_msg"], "")
 
     edit_playing_lists.acquire()
     try:
@@ -791,8 +789,8 @@ def handle_remove_invitation(conn):
 
 def handle_exit_room(conn, data):
     """
-    gets in data the type of room the client wants to exit - id room, open room
-    or an invitation room, so server can remove them from the appropriate list
+    gets in data the type of room the client wants to exit - id room or
+    open room so server can remove them from the appropriate list
     """
     global waiting_id_rooms, waiting_open_rooms, waiting_invitations
     # removing client from waiting open rooms list
@@ -803,18 +801,6 @@ def handle_exit_room(conn, data):
             send_success(conn, "exited_room")
         except ValueError:
             print("handle_exit_room func - error: client wasn't found in waiting_open_rooms")
-    # removing client from waiting invitations list
-    elif data == "invitation":
-        inv_remove = None
-        for wait_inv in waiting_invitations:
-            if wait_inv[1] is conn:
-                inv_remove = conn
-        if inv_remove is None:
-            print("handle_exit_room func - error: client wasn't found in waiting_invitations")
-            return
-        waiting_invitations.remove(inv_remove)
-        print("client was removed from waiting invitations")
-        send_success(conn, "exited_room")
     # removing client from waiting id rooms list
     else:
         try:
@@ -1259,41 +1245,39 @@ def handle_reject_friend_request(conn, data):
 # GAME OPERATOR
 
 def play(players):
-    board = game.Board()
-    turn1 = True
-    turn2 = False
-    turns = 0
-
     usernames = [logged_users[players[0].getpeername()], logged_users[players[1].getpeername()]]
 
-    if not send_both_players(players[0], players[1], commprot.SERVER_CMD["other_player_msg"], usernames[1], usernames[0]):
-        return False
+    if not send_both_players(players[0], players[1], commprot.SERVER_CMD["other_player_msg"], usernames[1],
+                             usernames[0]):
+        return
 
-    print(board.board)
-    while turns < 42 and not game.check_board(board):
+    board = game.Board()
+    turn1, turn2, turns = True, False, 0
+    while turns < 42:
+        if turns > 6 and game.check_board(board):
+            break
+
         if turn1:
             status, place = players_turn(board, players[0], players[1], 1)
         else:
             status, place = players_turn(board, players[1], players[0], 2)
 
-        if status != "GAME ON":
-            return False
+        if not status:
+            return
 
         if turn1:
             if not send_to_players(players[0], players[1], commprot.SERVER_CMD["success_msg"],
-                                   commprot.SERVER_CMD["other_cell_msg"], "", place): return False
+                                   commprot.SERVER_CMD["other_cell_msg"], "", place): return
         else:
             if not send_to_players(players[1], players[0], commprot.SERVER_CMD["success_msg"],
-                                   commprot.SERVER_CMD["other_cell_msg"], "", place): return False
+                                   commprot.SERVER_CMD["other_cell_msg"], "", place): return
 
-        print(board.board)
         turn1 = not turn1
         turn2 = not turn2
         turns += 1
 
     if not send_both_players(players[0], players[1], commprot.SERVER_CMD["game_over_msg"], "", ""):
-        return False
-    # time.sleep(0.5)
+        return
 
     if turns == 42:
         game.check_board(board)
@@ -1301,14 +1285,13 @@ def play(players):
     if winner == 1:
         send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "you_won", "you_lost")
         score = update_players_score(usernames[0], turns)
-        build_and_send_message(players[0], commprot.SERVER_CMD["game_score_msg"], str(score), True)
+        build_and_send_message(players[0], commprot.SERVER_CMD["game_score_msg"], str(score))
     elif winner == 2:
         send_both_players(players[1], players[0], commprot.SERVER_CMD["game_result_msg"], "you_won", "you_lost")
         score = update_players_score(usernames[1], turns)
-        build_and_send_message(players[1], commprot.SERVER_CMD["game_score_msg"], str(score), True)
+        build_and_send_message(players[1], commprot.SERVER_CMD["game_score_msg"], str(score))
     else:
         send_both_players(players[0], players[1], commprot.SERVER_CMD["game_result_msg"], "game_over", "game_over")
-    return True
 
 
 # SERVER SETUP
@@ -1323,8 +1306,7 @@ def main():
     set_topten()
 
     while True:
-        rlist, wlist, xlist = select.select([server_socket] + not_playing_clients,
-                                            not_playing_clients + playing_clients, [])
+        rlist, wlist, xlist = select.select([server_socket] + not_playing_clients, [], [])
 
         for current_socket in rlist:
             if current_socket is server_socket:
@@ -1343,7 +1325,6 @@ def main():
 
 if __name__ == '__main__':
     IP = '192.168.1.113'
-    # IP = '127.0.0.1'
     PORT = 1984
     server_socket = socket.socket()
     server_socket.bind((IP, PORT))

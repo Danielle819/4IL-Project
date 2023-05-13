@@ -1,4 +1,3 @@
-import numpy as np
 import sqlite3
 
 # Protocol Constants
@@ -14,8 +13,10 @@ DATA_FIELD = MAX_DATA_LENGTH * ' '
 # In this dictionary we will have all the client and server command names
 CLIENT_CMD = {
     "my_address_msg": "MY_ADDRESS",  # ipadress#port
-    "signup_msg": "SIGNUP",  # username#password
-    "login_msg": "LOGIN",  # username#password
+    "signup_part_msg": "SIGNUP_PART",  # username#password
+    "signup_fin_msg": "SIGNUP_FIN",  # username#password
+    "login_part_msg": "LOGIN_PART",  # username#password
+    "login_fin_msg": "LOGIN_FIN",  # username#password
     "logout_msg": "LOGOUT",  # ''
     "change_username_msg": "CHANGE_USERNAME",  # username
     "change_password_msg": "CHANGE_PASSWORD",  # password
@@ -45,13 +46,12 @@ CLIENT_CMD = {
 
 SERVER_CMD = {
     "success_msg": "SUCCESS",  # '' or ID
-    "status_msg": "STATUS",  # your_turn/not_your_turn
-    "updated_board_msg": "UPDATED_BOARD",  # the updated game board
     "other_player_msg": "OTHER_PLAYER",  # other player's username
+    "status_msg": "STATUS",  # your_turn/not_your_turn
     "other_cell_msg": "OTHER_CELL",  # other player's choice
-    "game_over_msg": "GAME_OVER",  # you_exited\other_player_exited
-    "game_score_msg": "GAME_SCORE",  # score
+    "game_over_msg": "GAME_OVER",  # ''
     "game_result_msg": "GAME_RESULT",  # 'you_won\you_lost\game_over'
+    "game_score_msg": "GAME_SCORE",  # score
     "your_score_msg": "YOUR_SCORE",  # score
     "topten_part_msg": "TOPTEN_PART",  # user1:score1#user2:score2#...
     "topten_fin_msg": "TOPTEN_FIN",  # user9:score9#user10:score10#...
@@ -135,7 +135,7 @@ def build_message(cmd, data):
     return full_msg
 
 
-def parse_message(data, reg=True):
+def parse_message(data):
     """
     Parses protocol message and returns command name and data field
     Returns: cmd (str), data (str). If some error occurred, returns None, None
@@ -166,7 +166,7 @@ def parse_message(data, reg=True):
     padded_msg = splt_msg[2]
     msg = ""
     for char in padded_msg:
-        if char.isalnum() or char == '_' or char == "#" or char == "," or char == ":" or char == ".":
+        if char != ' ':
             msg += char
 
     padded_length = splt_msg[1]
@@ -212,29 +212,6 @@ def join_msg(msg_fields):
     return msg[:-1]
 
 
-def board_to_string(board):
-    string = ""
-    for row in board:
-        for cell in row:
-            string += str(cell) + ","
-        string = string[:-1] + "#"
-    return string[:-1]
-
-
-def string_to_board(string):
-    board = np.ndarray((6, 7), dtype=int)
-    rows = string.split("#")
-    lst_board = []
-    for row in rows:
-        lst_board.append(row.split(","))
-
-    for row in range(6):
-        for col in range(7):
-            board[row, col] = lst_board[row][col]
-
-    return board
-
-
 def read_database(tb):
     try:
         db_conn = sqlite3.connect(r"sqlite\usersdb.db")
@@ -273,7 +250,7 @@ def read_database(tb):
     return db_dict
 
 
-def update_database(tb, db_dict, user, new_user=False, un_cng=False):
+def update_database(tb, db_dict, user, new_user=False):
     try:
         db_conn = sqlite3.connect(r"sqlite\usersdb.db")
     except:
@@ -284,10 +261,6 @@ def update_database(tb, db_dict, user, new_user=False, un_cng=False):
     if tb == "users":
         if new_user:
             sql = f'''INSERT INTO Users VALUES ('{user}', '{db_dict[user]["password"]}', {db_dict[user]["score"]})'''
-            cur.execute(sql)
-        elif un_cng:
-            pre_un, new_un = user
-            sql = f''' UPDATE Users SET username = '{new_un}' WHERE username = '{pre_un}' '''
             cur.execute(sql)
         else:
             sql = f''' UPDATE Users SET password = '{db_dict[user]["password"]}', score = {db_dict[user]["score"]} 

@@ -942,24 +942,25 @@ color: rgb(230, 224, 207);
     <property name="geometry">
      <rect>
       <x>80</x>
-      <y>135</y>
+      <y>122</y>
       <width>240</width>
       <height>24</height>
      </rect>
     </property>
     <property name="styleSheet">
      <string notr="true">background-color: rgba(255, 255, 255, 0);
-border-color: rgb(255, 255, 255);
+border: 1.2px solid white;
 font: 10pt &quot;MS Shell Dlg 2&quot;;
 color: white;
-padding-left:2px;</string>
+padding-left:2px;
+border-radius: 2px;</string>
     </property>
    </widget>
    <widget class="QPushButton" name="startsearchbutton">
     <property name="geometry">
      <rect>
       <x>290</x>
-      <y>133</y>
+      <y>120</y>
       <width>28</width>
       <height>28</height>
      </rect>
@@ -1003,9 +1004,9 @@ color: rgb(230, 224, 207);
     <property name="geometry">
      <rect>
       <x>80</x>
-      <y>115</y>
+      <y>150</y>
       <width>240</width>
-      <height>20</height>
+      <height>10</height>
      </rect>
     </property>
     <property name="styleSheet">
@@ -1013,10 +1014,10 @@ color: rgb(230, 224, 207);
 color: rgb(255, 0, 4);</string>
     </property>
     <property name="text">
-     <string>Friend not found</string>
+     <string>Friend was not found</string>
     </property>
     <property name="alignment">
-     <set>Qt::AlignCenter</set>
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
    <widget class="QLabel" name="backgroundlabel">

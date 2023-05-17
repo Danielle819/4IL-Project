@@ -1324,7 +1324,8 @@ def main():
 
 
 if __name__ == '__main__':
-    IP = '192.168.1.113'
+    # IP = '192.168.1.113'
+    IP = '192.168.12.97'
     PORT = 1984
     server_socket = socket.socket()
     server_socket.bind((IP, PORT))

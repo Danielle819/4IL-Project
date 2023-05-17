@@ -1,4 +1,6 @@
 import sqlite3
+import base64
+from cryptography.fernet import Fernet
 
 # Protocol Constants
 CMD_FIELD_LENGTH = 20  # Exact length of cmd field (in bytes)
@@ -8,6 +10,9 @@ BUFFER = "|"  # Delimiter character in protocol
 CMD_FIELD = CMD_FIELD_LENGTH * ' '
 LENGTH_FIELD = LENGTH_FIELD_LENGTH * ' '
 DATA_FIELD = MAX_DATA_LENGTH * ' '
+# Encryption Constants
+ENC_KEY = base64.urlsafe_b64encode(b"Madadaremoshiranaikaodewaraukimg")
+FERNET = Fernet(ENC_KEY)
 
 # Protocol Messages 
 # In this dictionary we will have all the client and server command names
@@ -227,7 +232,7 @@ def read_database(tb):
         cur.execute(sql)
         data = cur.fetchall()
         for t in data:
-            db_dict[t[0]] = {'password': t[1], 'score': t[2]}
+            db_dict[t[0]] = {'password': FERNET.decrypt(t[1].encode()).decode(), 'score': t[2]}
 
     if tb == "friends":
         sql = ''' SELECT * FROM Friends '''
@@ -260,10 +265,10 @@ def update_database(tb, db_dict, user, new_user=False):
 
     if tb == "users":
         if new_user:
-            sql = f'''INSERT INTO Users VALUES ('{user}', '{db_dict[user]["password"]}', {db_dict[user]["score"]})'''
+            sql = f'''INSERT INTO Users VALUES ('{user}', '{FERNET.encrypt(db_dict[user]["password"].encode()).decode()}', {db_dict[user]["score"]})'''
             cur.execute(sql)
         else:
-            sql = f''' UPDATE Users SET password = '{db_dict[user]["password"]}', score = {db_dict[user]["score"]} 
+            sql = f''' UPDATE Users SET password = '{FERNET.encrypt(db_dict[user]["password"].encode()).decode()}', score = {db_dict[user]["score"]} 
                         WHERE username = '{user}' '''
             cur.execute(sql)
 

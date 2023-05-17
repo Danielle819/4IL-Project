@@ -232,7 +232,10 @@ def read_database(tb):
         cur.execute(sql)
         data = cur.fetchall()
         for t in data:
-            db_dict[t[0]] = {'password': FERNET.decrypt(t[1].encode()).decode(), 'score': t[2]}
+            try:
+                db_dict[t[0]] = {'password': FERNET.decrypt(t[1].encode()).decode(), 'score': t[2]}
+            except:
+                pass
 
     if tb == "friends":
         sql = ''' SELECT * FROM Friends '''
